@@ -1,0 +1,35 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3bfdbd19d58d35e468c8f6a5d8eb58aa, type: 3}
+  m_Name: GenerationSettings
+  m_EditorClassIdentifier: 
+  mapWidth: 240
+  mapHeight: 240
+  roomCount: 20
+  neighborCount: 2
+  seed: 0
+  isSeedConstant: 0
+  roomMinSize: 15
+  roomMaxSize: 25
+  maxRoomPlacementAttempts: 50
+  drunkardWalkLength: 100
+  drunkardTurnAngle: 45
+  corridorRadius: 1
+  iterations: 4
+  birthLimit: 5
+  deathLimit: 5
+  groundTilemap: {fileID: 3309993521597237318, guid: 59bd8f3b8dc80214fbfd929e145b5753, type: 3}
+  wallTilemap: {fileID: 6284511652306830807, guid: 1de3a9b56d06b4f42baefa3a66780f96, type: 3}
+  groundTile: {fileID: 11400000, guid: 7197dab3f9ae9af4a8ec3ffe44e32ff2, type: 2}
+  wallTile: {fileID: 11400000, guid: 4ef8f70c586ce86498ac6daf70a36398, type: 2}
+  playerPrefab: {fileID: 8991558102886533549, guid: 275d8d94d5105e74799e17ec8c81bacb, type: 3}
+  exitPrefab: {fileID: 8864183297166492662, guid: d73a532730736514f92cb10dabd701f1, type: 3}
