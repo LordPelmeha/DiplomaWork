@@ -1,4 +1,4 @@
-using UnityEngine;
+ï»¿using UnityEngine;
 using UnityEngine.Tilemaps;
 
 [CreateAssetMenu(fileName = "DungeonSettings", menuName = "Generation Settings")]
@@ -19,7 +19,7 @@ public class DungeonSettings : ScriptableObject
     public int roomMaxSize = 15;
     public int maxRoomPlacementAttempts = 50;
 
-    [Header("Drunkard’s Walk Corridors")]
+    [Header("Drunkard's Walk Corridors")]
     public int drunkardWalkLength = 100;
     public float drunkardTurnAngle = 45f;   
     public int corridorRadius = 1;

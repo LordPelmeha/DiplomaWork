@@ -1,4 +1,4 @@
-using System;
+п»їusing System;
 using System.Collections;
 using UnityEngine;
 using UnityEngine.Tilemaps;
@@ -39,18 +39,18 @@ public class DungeonGenerator : MonoBehaviour
         bool isValid = false;
         while (!isValid)
         {
-            // Генерируем граф и комнаты
+            // Р“РµРЅРµСЂРёСЂСѓРµРј РіСЂР°С„ Рё РєРѕРјРЅР°С‚С‹
             var graph = GraphGenerator.Generate(runtimeSettings);
             layout = RoomPlacer.Place(graph, runtimeSettings);
             Debug.Log(1);
-            // 2) Генерируем коридоры
+            // 2) Р“РµРЅРµСЂРёСЂСѓРµРј РєРѕСЂРёРґРѕСЂС‹
             var corridors = DrunkardWalkConnector.Connect(layout, runtimeSettings);
             layout.SetCorridors(corridors);
             Debug.Log(2);
-            // 3) Пост-обработка карты
+            // 3) РџРѕСЃС‚-РѕР±СЂР°Р±РѕС‚РєР° РєР°СЂС‚С‹
             PostProcessor.Process(layout, runtimeSettings);
             Debug.Log(3);
-            // 4) Проверяем уровень
+            // 4) РџСЂРѕРІРµСЂСЏРµРј СѓСЂРѕРІРµРЅСЊ
             isValid = DungeonValidator.Validate(layout);
             if (!isValid)
             {
@@ -58,10 +58,10 @@ public class DungeonGenerator : MonoBehaviour
                 continue;
             }
             Debug.Log(4);
-            // 5) Строим Tilemap
+            // 5) РЎС‚СЂРѕРёРј Tilemap
             TilemapBuilder.Build(layout, corridors);
             Debug.Log(5);
-            // 6) Спавним игрока и выход
+            // 6) РЎРїР°РІРЅРёРј РёРіСЂРѕРєР° Рё РІС‹С…РѕРґ
             GameplayPlacer.Place(layout, runtimeSettings);
             Debug.Log(6);
         }

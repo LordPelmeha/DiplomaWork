@@ -1,26 +1,26 @@
-using System.Collections.Generic;
+п»їusing System.Collections.Generic;
 using UnityEngine;
 
 public static class GameplayPlacer
 {
     public static void Place(RoomLayout layout, DungeonSettings settings)
     {
-        // 1) Спавн игрока внутри стартовой комнаты
+        // 1) РЎРїР°РІРЅ РёРіСЂРѕРєР° РІРЅСѓС‚СЂРё СЃС‚Р°СЂС‚РѕРІРѕР№ РєРѕРјРЅР°С‚С‹
         RectInt startRoom = layout.Rooms[0];
 
-        // 2) Ищем spawnCell
+        // 2) РС‰РµРј spawnCell
         Vector3Int spawnCell = FindValidGroundCell(startRoom, layout);
         Vector3 worldStart = settings.groundTilemap.GetCellCenterWorld(spawnCell);
         worldStart.z = -1f;
 
         var player = GameObject.Instantiate(settings.playerPrefab, worldStart, Quaternion.identity);
 
-        // Привязываем камеру
+        // РџСЂРёРІСЏР·С‹РІР°РµРј РєР°РјРµСЂСѓ
         var cameraFollow = Camera.main.GetComponent<CameraFollow>();
         if (cameraFollow != null)
             cameraFollow.target = player.transform;
 
-        // 2) Спавн выхода — в самой удалённой комнате от spawnCell
+        // 2) РЎРїР°РІРЅ РІС‹С…РѕРґР° вЂ” РІ СЃР°РјРѕР№ СѓРґР°Р»С‘РЅРЅРѕР№ РєРѕРјРЅР°С‚Рµ РѕС‚ spawnCell
         Vector2Int startCell2D = new Vector2Int(spawnCell.x, spawnCell.y);
         int farIdx = 0;
         float maxDist2 = -1f;
@@ -90,16 +90,16 @@ public static class GameplayPlacer
         int w = map.GetLength(0), h = map.GetLength(1);
         var candidates = new List<Vector3Int>();
 
-        // проходим по всем «внутренним» клеткам комнаты
+        // РїСЂРѕС…РѕРґРёРј РїРѕ РІСЃРµРј В«РІРЅСѓС‚СЂРµРЅРЅРёРјВ» РєР»РµС‚РєР°Рј РєРѕРјРЅР°С‚С‹
         for (int x = room.xMin + 1; x < room.xMax - 1; x++)
             for (int y = room.yMin + 1; y < room.yMax - 1; y++)
             {
                 if (x < 0 || x >= w || y < 0 || y >= h) continue;
 
                 var cell = new Vector3Int(x, y, 0);
-                // условие 1: это действительно пол
+                // СѓСЃР»РѕРІРёРµ 1: СЌС‚Рѕ РґРµР№СЃС‚РІРёС‚РµР»СЊРЅРѕ РїРѕР»
                 bool isFloor = map[x, y] == 0 && groundMap.HasTile(cell);
-                // условие 2: в этой клетке нет стены
+                // СѓСЃР»РѕРІРёРµ 2: РІ СЌС‚РѕР№ РєР»РµС‚РєРµ РЅРµС‚ СЃС‚РµРЅС‹
                 bool noWall = !wallMap.HasTile(cell);
 
                 if (isFloor && noWall)

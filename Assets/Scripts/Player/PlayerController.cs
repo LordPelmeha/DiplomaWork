@@ -1,20 +1,20 @@
-using UnityEngine;
+п»їusing UnityEngine;
 using UnityEngine.InputSystem;
 
 [RequireComponent(typeof(Rigidbody2D))]
 public class PlayerController : MonoBehaviour
 {
     [Header("Movement")]
-    [Tooltip("Скорость передвижения")]
+    [Tooltip("РЎРєРѕСЂРѕСЃС‚СЊ РїРµСЂРµРґРІРёР¶РµРЅРёСЏ")]
     public float moveSpeed = 3.5f;
 
     Rigidbody2D rb;
     //Animator animator; 
 
-    // Input System generated class (сгенерируй PlayerControls через Input Actions asset)
+    // Input System generated class (СЃРіРµРЅРµСЂРёСЂСѓР№ PlayerControls С‡РµСЂРµР· Input Actions asset)
     private PlayerControls controls;
 
-    // Текущий входной вектор (-1..1)
+    // РўРµРєСѓС‰РёР№ РІС…РѕРґРЅРѕР№ РІРµРєС‚РѕСЂ (-1..1)
     private Vector2 input = Vector2.zero;
 
     private float correctAngle = Mathf.Atan(0.5f) * Mathf.Rad2Deg;
@@ -24,29 +24,29 @@ public class PlayerController : MonoBehaviour
         rb = GetComponent<Rigidbody2D>();
         //animator = GetComponent<Animator>();
 
-        // Инициализируем сгенерированный класс
+        // РРЅРёС†РёР°Р»РёР·РёСЂСѓРµРј СЃРіРµРЅРµСЂРёСЂРѕРІР°РЅРЅС‹Р№ РєР»Р°СЃСЃ
         controls = new PlayerControls();
     }
 
     void OnEnable()
     {
-        // Включаем карту (Enable)
+        // Р’РєР»СЋС‡Р°РµРј РєР°СЂС‚Сѓ (Enable)
         controls.Enable();
     }
 
     void OnDisable()
     {
-        // Отключаем, чтобы не оставлять подписки
+        // РћС‚РєР»СЋС‡Р°РµРј, С‡С‚РѕР±С‹ РЅРµ РѕСЃС‚Р°РІР»СЏС‚СЊ РїРѕРґРїРёСЃРєРё
         controls.Disable();
     }
 
     void Update()
     {
-        // Читаем текущее значение Move прямо из action
-        // (удобно и надёжно, работает и с клавиатурой, и с геймпадом)
+        // Р§РёС‚Р°РµРј С‚РµРєСѓС‰РµРµ Р·РЅР°С‡РµРЅРёРµ Move РїСЂСЏРјРѕ РёР· action
+        // (СѓРґРѕР±РЅРѕ Рё РЅР°РґС‘Р¶РЅРѕ, СЂР°Р±РѕС‚Р°РµС‚ Рё СЃ РєР»Р°РІРёР°С‚СѓСЂРѕР№, Рё СЃ РіРµР№РјРїР°РґРѕРј)
         input = controls.Player.Move.ReadValue<Vector2>();
 
-        // Если используешь Animator — передаём значения для Blend Tree / состояний
+        // Р•СЃР»Рё РёСЃРїРѕР»СЊР·СѓРµС€СЊ Animator вЂ” РїРµСЂРµРґР°С‘Рј Р·РЅР°С‡РµРЅРёСЏ РґР»СЏ Blend Tree / СЃРѕСЃС‚РѕСЏРЅРёР№
         //if (animator != null)
         //{
         //    animator.SetFloat("MoveX", input.x);
@@ -61,7 +61,7 @@ public class PlayerController : MonoBehaviour
 
         if (Mathf.Abs(input.x) > 0 && Mathf.Abs(input.y) > 0)
         {
-            // определяем квадрант и целевой угол (в радианах)
+            // РѕРїСЂРµРґРµР»СЏРµРј РєРІР°РґСЂР°РЅС‚ Рё С†РµР»РµРІРѕР№ СѓРіРѕР» (РІ СЂР°РґРёР°РЅР°С…)
             float angleDeg;
             if (input.x > 0f && input.y > 0f)        
                 angleDeg = correctAngle;
@@ -75,7 +75,7 @@ public class PlayerController : MonoBehaviour
             float rad = angleDeg * Mathf.Deg2Rad;
             Vector2 dir = new Vector2(Mathf.Cos(rad), Mathf.Sin(rad)); 
 
-            // применяем силу ввода к направлению
+            // РїСЂРёРјРµРЅСЏРµРј СЃРёР»Сѓ РІРІРѕРґР° Рє РЅР°РїСЂР°РІР»РµРЅРёСЋ
             move = dir * input.magnitude;
         }
 

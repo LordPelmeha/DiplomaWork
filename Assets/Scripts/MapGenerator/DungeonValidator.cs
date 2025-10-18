@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+п»їusing System.Collections.Generic;
 using UnityEngine;
 
 public static class DungeonValidator
@@ -17,7 +17,7 @@ public static class DungeonValidator
             return (s, e);
         }
 
-        // 1) Помечаем комнаты как проходимые
+        // 1) РџРѕРјРµС‡Р°РµРј РєРѕРјРЅР°С‚С‹ РєР°Рє РїСЂРѕС…РѕРґРёРјС‹Рµ
         foreach (var room in layout.Rooms)
         {
             var (x0, x1) = ClampRange(room.xMin, room.xMax, width);
@@ -27,7 +27,7 @@ public static class DungeonValidator
                     walkable[x, y] = true;
         }
 
-        // 2) Помечаем коридоры как проходимые
+        // 2) РџРѕРјРµС‡Р°РµРј РєРѕСЂРёРґРѕСЂС‹ РєР°Рє РїСЂРѕС…РѕРґРёРјС‹Рµ
         foreach (var c in layout.Corridors)
         {
             var (x0, x1) = ClampRange(c.xMin, c.xMax, width);
@@ -37,7 +37,7 @@ public static class DungeonValidator
                     walkable[x, y] = true;
         }
 
-        // 3) BFS от центра стартовой комнаты
+        // 3) BFS РѕС‚ С†РµРЅС‚СЂР° СЃС‚Р°СЂС‚РѕРІРѕР№ РєРѕРјРЅР°С‚С‹
         Vector2 startF = layout.Rooms[0].center;
         Vector2Int start = new Vector2Int(
             Mathf.RoundToInt(startF.x),
@@ -47,7 +47,7 @@ public static class DungeonValidator
         var visited = new bool[width, height];
         var queue = new Queue<Vector2Int>();
 
-        // Проверим, что start внутри карты
+        // РџСЂРѕРІРµСЂРёРј, С‡С‚Рѕ start РІРЅСѓС‚СЂРё РєР°СЂС‚С‹
         if (start.x < 0 || start.x >= width || start.y < 0 || start.y >= height)
             return false;
 
@@ -75,7 +75,7 @@ public static class DungeonValidator
             }
         }
 
-        // 4) Проверяем достижимость каждой комнаты
+        // 4) РџСЂРѕРІРµСЂСЏРµРј РґРѕСЃС‚РёР¶РёРјРѕСЃС‚СЊ РєР°Р¶РґРѕР№ РєРѕРјРЅР°С‚С‹
         foreach (var room in layout.Rooms)
         {
             var (x0, x1) = ClampRange(room.xMin, room.xMax, width);

@@ -1,15 +1,15 @@
-using UnityEngine;
+п»їusing UnityEngine;
 using UnityEngine.InputSystem;
 
 [RequireComponent(typeof(Camera))]
 public class CameraZoom : MonoBehaviour
 {
-    [Header("Настройки зума")]
-    [Tooltip("Скорость изменения размера камеры при прокрутке")]
+    [Header("РќР°СЃС‚СЂРѕР№РєРё Р·СѓРјР°")]
+    [Tooltip("РЎРєРѕСЂРѕСЃС‚СЊ РёР·РјРµРЅРµРЅРёСЏ СЂР°Р·РјРµСЂР° РєР°РјРµСЂС‹ РїСЂРё РїСЂРѕРєСЂСѓС‚РєРµ")]
     [SerializeField] private float zoomSpeed = 5f;
-    [Tooltip("Минимальное значение приближения")]
+    [Tooltip("РњРёРЅРёРјР°Р»СЊРЅРѕРµ Р·РЅР°С‡РµРЅРёРµ РїСЂРёР±Р»РёР¶РµРЅРёСЏ")]
     [SerializeField] private float minZoom = 3f;
-    [Tooltip("Максимальное значение отдаления")]
+    [Tooltip("РњР°РєСЃРёРјР°Р»СЊРЅРѕРµ Р·РЅР°С‡РµРЅРёРµ РѕС‚РґР°Р»РµРЅРёСЏ")]
     [SerializeField] private float maxZoom = 15f;
 
     private Camera cam;
@@ -21,14 +21,14 @@ public class CameraZoom : MonoBehaviour
 
     private void Update()
     {
-        // Суммарное изменение "величины зума" за кадр (положительное = zoom in (уменьшение orthographicSize))
+        // РЎСѓРјРјР°СЂРЅРѕРµ РёР·РјРµРЅРµРЅРёРµ "РІРµР»РёС‡РёРЅС‹ Р·СѓРјР°" Р·Р° РєР°РґСЂ (РїРѕР»РѕР¶РёС‚РµР»СЊРЅРѕРµ = zoom in (СѓРјРµРЅСЊС€РµРЅРёРµ orthographicSize))
         float zoomDelta = 0f;
 
-        // 1) Мышь (колёсико)
+        // 1) РњС‹С€СЊ (РєРѕР»С‘СЃРёРєРѕ)
         if (Mouse.current != null)
         {
-            Vector2 scroll = Mouse.current.scroll.ReadValue(); // обычно (0, scrollY)
-            // В старом API: newSize = size - scroll * speed, значит положительное scroll => уменьшаем ortho (zoom in)
+            Vector2 scroll = Mouse.current.scroll.ReadValue(); // РѕР±С‹С‡РЅРѕ (0, scrollY)
+            // Р’ СЃС‚Р°СЂРѕРј API: newSize = size - scroll * speed, Р·РЅР°С‡РёС‚ РїРѕР»РѕР¶РёС‚РµР»СЊРЅРѕРµ scroll => СѓРјРµРЅСЊС€Р°РµРј ortho (zoom in)
             if (!Mathf.Approximately(scroll.y, 0f))
             {
                 zoomDelta += scroll.y * zoomSpeed;
@@ -36,7 +36,7 @@ public class CameraZoom : MonoBehaviour
         }
         if (!Mathf.Approximately(zoomDelta, 0f))
         {
-            // Применяем изменение: в старом варианте size -= scroll * speed
+            // РџСЂРёРјРµРЅСЏРµРј РёР·РјРµРЅРµРЅРёРµ: РІ СЃС‚Р°СЂРѕРј РІР°СЂРёР°РЅС‚Рµ size -= scroll * speed
             float newSize = cam.orthographicSize - zoomDelta;
             cam.orthographicSize = Mathf.Clamp(newSize, minZoom, maxZoom);
         }

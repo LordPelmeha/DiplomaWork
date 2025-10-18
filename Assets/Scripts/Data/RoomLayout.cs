@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+п»їusing System.Collections.Generic;
 using UnityEngine;
 
 [System.Serializable]
@@ -28,18 +28,18 @@ public class RoomLayout
     {
         int w = Settings.mapWidth;
         int h = Settings.mapHeight;
-        // 1 = стена, 0 = пол
+        // 1 = СЃС‚РµРЅР°, 0 = РїРѕР»
         for (int x = 0; x < w; x++)
             for (int y = 0; y < h; y++)
                 MapData[x, y] = 1;
 
-        // «вырезаем» комнаты
+        // В«РІС‹СЂРµР·Р°РµРјВ» РєРѕРјРЅР°С‚С‹
         foreach (var r in Rooms)
             for (int x = r.xMin; x < r.xMax; x++)
                 for (int y = r.yMin; y < r.yMax; y++)
                     if (x >= 0 && x < w && y >= 0 && y < h) MapData[x, y] = 0;
 
-        // «вырезаем» коридоры
+        // В«РІС‹СЂРµР·Р°РµРјВ» РєРѕСЂРёРґРѕСЂС‹
         foreach (var c in Corridors)
             for (int x = c.xMin; x < c.xMax; x++)
                 for (int y = c.yMin; y < c.yMax; y++)

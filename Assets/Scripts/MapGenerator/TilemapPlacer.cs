@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+п»їusing System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Tilemaps;
 
@@ -18,7 +18,7 @@ public static class TilemapBuilder
 
         int[,] map = layout.MapData;
 
-        // Отрисовываем пол
+        // РћС‚СЂРёСЃРѕРІС‹РІР°РµРј РїРѕР»
         int painted = 0;
         for (int x = 0; x < width; x++)
             for (int y = 0; y < height; y++)
@@ -29,7 +29,7 @@ public static class TilemapBuilder
 
                 }
 
-        // Отрисовываем стены вокруг пола
+        // РћС‚СЂРёСЃРѕРІС‹РІР°РµРј СЃС‚РµРЅС‹ РІРѕРєСЂСѓРі РїРѕР»Р°
         Vector2Int[] dirs = {
             Vector2Int.up, Vector2Int.down,
             Vector2Int.left, Vector2Int.right
