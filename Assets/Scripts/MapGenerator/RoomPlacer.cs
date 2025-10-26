@@ -23,8 +23,8 @@ public static class RoomPlacer
 
         // формируем итоговый Layout и сразу генерим коридоры
         var layout = new RoomLayout(graph, rooms, settings);
-        var corridors = DrunkardWalkConnector.Connect(layout, settings);
-        layout.SetCorridors(corridors);
+        //var corridors = LShapedConnector.Connect(layout, settings);
+        //layout.SetCorridors(corridors);
         return layout;
     }
 

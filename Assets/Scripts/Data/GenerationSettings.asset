@@ -12,21 +12,24 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3bfdbd19d58d35e468c8f6a5d8eb58aa, type: 3}
   m_Name: GenerationSettings
   m_EditorClassIdentifier: 
-  mapWidth: 240
-  mapHeight: 240
+  mapWidth: 400
+  mapHeight: 400
   roomCount: 20
-  neighborCount: 2
+  neighborCount: 3
   seed: 0
   isSeedConstant: 0
-  roomMinSize: 15
-  roomMaxSize: 25
+  roomMinSize: 30
+  roomMaxSize: 50
   maxRoomPlacementAttempts: 50
-  drunkardWalkLength: 100
-  drunkardTurnAngle: 45
-  corridorRadius: 1
-  iterations: 4
-  birthLimit: 5
-  deathLimit: 5
+  preferHorizontalFirst: 0.5
+  bendOffsetMax: 2
+  detourProbability: 0.12
+  detourInterval: 6
+  detourMaxLength: 3
+  corridorRadius: 2
+  iterations: 1
+  birthLimit: 3
+  deathLimit: 2
   groundTilemap: {fileID: 3309993521597237318, guid: 59bd8f3b8dc80214fbfd929e145b5753, type: 3}
   wallTilemap: {fileID: 6284511652306830807, guid: 1de3a9b56d06b4f42baefa3a66780f96, type: 3}
   groundTile: {fileID: 11400000, guid: 7197dab3f9ae9af4a8ec3ffe44e32ff2, type: 2}

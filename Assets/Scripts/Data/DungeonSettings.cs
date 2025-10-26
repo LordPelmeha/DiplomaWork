@@ -19,10 +19,17 @@ public class DungeonSettings : ScriptableObject
     public int roomMaxSize = 15;
     public int maxRoomPlacementAttempts = 50;
 
-    [Header("Drunkard's Walk Corridors")]
-    public int drunkardWalkLength = 100;
-    public float drunkardTurnAngle = 45f;   
+    [Header("Corridor Generation (L-shaped)")]
+    [Range(0f, 1f)]
+    public float preferHorizontalFirst = 0.5f; 
+    public int bendOffsetMax = 2;               
+    [Tooltip("Вероятность в каждой detourInterval клетке вставить короткое ответвление")]
+    [Range(0f, 1f)]
+    public float detourProbability = 0.12f;
+    public int detourInterval = 6;              
+    public int detourMaxLength = 3;             
     public int corridorRadius = 1;
+
 
     [Header("Post-Processing")]
     public int iterations = 3;

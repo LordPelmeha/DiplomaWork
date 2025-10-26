@@ -39,17 +39,20 @@ public class DungeonGenerator : MonoBehaviour
         bool isValid = false;
         while (!isValid)
         {
-            // Генерируем граф и комнаты
+            // 1) Генерируем граф и комнаты
             var graph = GraphGenerator.Generate(runtimeSettings);
             layout = RoomPlacer.Place(graph, runtimeSettings);
             Debug.Log(1);
+
             // 2) Генерируем коридоры
-            var corridors = DrunkardWalkConnector.Connect(layout, runtimeSettings);
+            var corridors = LShapedConnector.Connect(layout, runtimeSettings);
             layout.SetCorridors(corridors);
             Debug.Log(2);
+
             // 3) Пост-обработка карты
             PostProcessor.Process(layout, runtimeSettings);
             Debug.Log(3);
+
             // 4) Проверяем уровень
             isValid = DungeonValidator.Validate(layout);
             if (!isValid)
@@ -58,9 +61,11 @@ public class DungeonGenerator : MonoBehaviour
                 continue;
             }
             Debug.Log(4);
+
             // 5) Строим Tilemap
             TilemapBuilder.Build(layout, corridors);
             Debug.Log(5);
+
             // 6) Спавним игрока и выход
             GameplayPlacer.Place(layout, runtimeSettings);
             Debug.Log(6);
