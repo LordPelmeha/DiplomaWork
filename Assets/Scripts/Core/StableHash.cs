@@ -2,18 +2,11 @@
 
 namespace Diploma.Core
 {
-    /// <summary>
-    /// Стабильный хеш для получения sub-seed'ов из (rootSeed + streamKey).
-    /// </summary>
     public static class StableHash
     {
-        // FNV-1a 32-bit constants
         private const uint OffsetBasis = 2166136261u;
         private const uint Prime = 16777619u;
 
-        /// <summary>
-        /// Стабильно хеширует (rootSeed + key) в uint.
-        /// </summary>
         public static uint HashToUInt(int rootSeed, string key)
         {
             if (key == null) throw new ArgumentNullException(nameof(key));
@@ -22,7 +15,6 @@ namespace Diploma.Core
             {
                 uint hash = OffsetBasis;
 
-                // Mix seed bytes
                 hash = FnvaStep(hash, (byte)rootSeed);
                 hash = FnvaStep(hash, (byte)(rootSeed >> 8));
                 hash = FnvaStep(hash, (byte)(rootSeed >> 16));
@@ -39,15 +31,10 @@ namespace Diploma.Core
             }
         }
 
-        /// <summary>
-        /// Стабильно хеширует (rootSeed + key) в int для System.Random(int seed).
-        /// </summary>
         public static int HashToInt(int rootSeed, string key)
         {
-            unchecked
-            {
-                return (int)HashToUInt(rootSeed, key);
-            }
+            uint hash = HashToUInt(rootSeed, key);
+            return (int)(hash & 0x7FFFFFFF);
         }
 
         private static uint FnvaStep(uint hash, byte data)

@@ -35,8 +35,6 @@ public class WorldDeterminismCoreTests
         Random rGraph = ctx.CreateRng("Graph");
         Random rStreets = ctx.CreateRng("Streets");
 
-        // Не строгая матем. гарантия, но на практике почти наверняка разные последовательности.
-        // Главное: они стабильно "свои" и не зависят друг от друга.
         int g0 = rGraph.Next();
         int s0 = rStreets.Next();
 

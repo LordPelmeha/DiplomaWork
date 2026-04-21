@@ -1,0 +1,44 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6f48f5738798d8e448bf6ea876e56e7f, type: 3}
+  m_Name: WorldGenConfig
+  m_EditorClassIdentifier: Assembly-CSharp::Diploma.Generation.WorldGenConfig
+  mapSize: {x: 150, y: 150}
+  districtCount: 8
+  extraEdges: 3
+  roadRadius: 1
+  buildingsPerBlockMin: 2
+  buildingsPerBlockMax: 6
+  terrainSmoothChance: 30
+  biomeScale: 0.1
+  biomeOctaves: 4
+  biomePersistence: 0.5
+  biomeLacunarity: 2
+  biomeStoneThreshold: 0.2
+  biomeDirtThreshold: 0.3
+  biomeFlowerThreshold: 0.4
+  biomeSandThreshold: 0.75
+  districtMargin: 8
+  districtMinDistance: 10
+  districtGridStep: 6
+  maxNodeDegree: 4
+  decorationMinDistanceFromRoad: 5
+  decorationMaxDistanceFromRoad: 0
+  treePrefabIds: e8030000e9030000ea030000
+  treePrefabWeights: 010000000100000001000000
+  treeSpawnChance: 5
+  maxTreeCount: 0
+  lampPrefabIds: eb030000
+  lampPrefabWeights: 01000000
+  lampInterval: 10
+  minRoadSegmentLength: 5
+  benchPrefabId: 1004

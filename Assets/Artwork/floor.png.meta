@@ -1,10 +1,10 @@
 fileFormatVersion: 2
-guid: 1671677d3446cd145aeb403955960a04
+guid: 58ea620f7d7bdbb47819964f922d7347
 TextureImporter:
   internalIDToNameTable:
   - first:
-      213: -4373184736405950995
-    second: floor_0
+      213: -1916959490994741406
+    second: Floor 1_0
   externalObjects: {}
   serializedVersion: 13
   mipmaps:
@@ -75,7 +75,7 @@ TextureImporter:
     maxTextureSize: 2048
     resizeAlgorithm: 0
     textureFormat: -1
-    textureCompression: 1
+    textureCompression: 0
     compressionQuality: 50
     crunchedCompression: 0
     allowsAlphaSplitting: 0
@@ -96,11 +96,24 @@ TextureImporter:
     ignorePlatformSupport: 0
     androidETC2FallbackOverride: 0
     forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: WindowsStoreApps
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
   spriteSheet:
     serializedVersion: 2
     sprites:
     - serializedVersion: 2
-      name: floor_0
+      name: Floor 1_0
       rect:
         serializedVersion: 2
         x: 0
@@ -115,8 +128,8 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: dedec5107a35f43c0800000000000000
-      internalID: -4373184736405950995
+      spriteID: 26fd17adf779565e0800000000000000
+      internalID: -1916959490994741406
       vertices: []
       indices: 
       edges: []
@@ -135,7 +148,7 @@ TextureImporter:
     spriteCustomMetadata:
       entries: []
     nameFileIdTable:
-      floor_0: -4373184736405950995
+      Floor 1_0: -1916959490994741406
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 

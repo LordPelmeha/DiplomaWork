@@ -2,9 +2,6 @@
 
 namespace Diploma.Core
 {
-    /// <summary>
-    /// даёт независимые RNG-потоки по ключу шага.
-    /// </summary>
     public sealed class SeedContext
     {
         public int RootSeed { get; }
@@ -14,9 +11,6 @@ namespace Diploma.Core
             RootSeed = rootSeed;
         }
 
-        /// <summary>
-        /// Создаёт System.Random для конкретного потока
-        /// </summary>
         public Random CreateRng(string streamKey)
         {
             if (string.IsNullOrWhiteSpace(streamKey))
@@ -25,10 +19,6 @@ namespace Diploma.Core
             int subSeed = StableHash.HashToInt(RootSeed, streamKey);
             return new Random(subSeed);
         }
-
-        /// <summary>
-        /// Создаёт RNG для потока + номера попытки 
-        /// </summary>
         public Random CreateRng(string streamKey, int attemptIndex)
         {
             if (string.IsNullOrWhiteSpace(streamKey))
@@ -39,9 +29,6 @@ namespace Diploma.Core
             return new Random(subSeed);
         }
 
-        /// <summary>
-        /// Получить sub-seed
-        /// </summary>
         public int GetSubSeed(string streamKey)
         {
             if (string.IsNullOrWhiteSpace(streamKey))

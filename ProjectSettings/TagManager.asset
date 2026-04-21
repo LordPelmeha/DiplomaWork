@@ -44,6 +44,9 @@ TagManager:
   - name: Ground
     uniqueID: 733593003
     locked: 0
+  - name: Road
+    uniqueID: 1584014957
+    locked: 0
   - name: Characters
     uniqueID: 3530367401
     locked: 0
