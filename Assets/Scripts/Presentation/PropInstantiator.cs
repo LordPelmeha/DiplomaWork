@@ -55,10 +55,12 @@ namespace Diploma.Presentation
                     instance.name = $"Spawned_{entry.prefabId}_{entry.cellPos.x}_{entry.cellPos.y}";
                     instance.layer = 0;
 
-                    // Y-based ordering: lower Y (smaller) -> higher sortingOrder and renderQueue
-                    // Factor 10 gives sufficient separation across map (Y~150 -> diff ~1500)
-                    int yOrder = -Mathf.FloorToInt(worldPos.y * 10);
-                    Setup3DObjectSorting(instance, 3000, yOrder);
+                    // For isometric depth sorting: use (x + y) as depth key.
+                    // Objects with larger (x+y) are further away (background) and should have lower sorting order.
+                    // Multiply by 100 to ensure sufficient separation across map.
+                    int depth = entry.cellPos.x + entry.cellPos.y;
+                    int depthOffset = -depth * 100;
+                    Setup3DObjectSorting(instance, 3000, depthOffset);
                 }
                 else
                 {
@@ -121,8 +123,9 @@ namespace Diploma.Presentation
                     instance.name = $"Building_{building.id}_{building.type}";
                     instance.layer = 0;
 
-                    int yOrder = -Mathf.FloorToInt(worldPos.y * 10);
-                    Setup3DObjectSorting(instance, 3000, yOrder);
+                    int depth = building.position.x + building.position.y;
+                    int depthOffset = -depth * 100;
+                    Setup3DObjectSorting(instance, 3000, depthOffset);
                 }
                 else
                 {

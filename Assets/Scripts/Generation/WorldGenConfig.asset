@@ -17,6 +17,7 @@ MonoBehaviour:
   extraEdges: 3
   roadRadius: 1
   minBuildingGap: 6
+  minBuildingDistance: 8
   buildingPrefabIds: d0070000d1070000d2070000
   buildingPrefabWeights: 01000000
   terrainSmoothChance: 30

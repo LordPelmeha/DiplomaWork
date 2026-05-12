@@ -1,4 +1,6 @@
 ﻿<Solution>
   <Project Path="Diploma.Scripts.csproj" />
+  <Project Path="io.realvirtual.mcp.editor.csproj" />
+  <Project Path="io.realvirtual.mcp.csproj" />
   <Project Path="Diploma.Tests.csproj" />
 </Solution>

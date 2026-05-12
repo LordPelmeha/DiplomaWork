@@ -55,8 +55,8 @@ namespace Diploma.Generation.Steps
                         dist > config.decorationMaxDistanceFromRoad)
                         continue;
 
-                    // Проверяем расстояние до зданий
-                    if (!IsCellAwayFromBuildings(new Vector2Int(x, y), world, config.minBuildingGap))
+                    // Проверяем расстояние до зданий (используем minBuildingDistance для декораций)
+                    if (!IsCellAwayFromBuildings(new Vector2Int(x, y), world, config.minBuildingDistance))
                         continue;
 
                     // Проверяем лимит
@@ -76,8 +76,8 @@ namespace Diploma.Generation.Steps
 
             // Спавн фонарей вдоль дорог
             var lampPositions = SpawnLampsAlongRoads(roads, ground, config);
-            // Фильтруем позиции, которые слишком близко к зданиям
-            lampPositions.RemoveAll(pos => !IsCellAwayFromBuildings(pos, world, config.minBuildingGap));
+            // Фильтруем позиции, которые слишком близко к зданиям (используем minBuildingDistance)
+            lampPositions.RemoveAll(pos => !IsCellAwayFromBuildings(pos, world, config.minBuildingDistance));
             foreach (var lampPos in lampPositions)
             {
                 int lampPrefabId = SelectPrefabById(config.lampPrefabIds, config.lampPrefabWeights, rng);
@@ -154,8 +154,8 @@ namespace Diploma.Generation.Steps
                         if (adjacentToRoad)
                         {
                             Vector2Int cellPos = new Vector2Int(x, y);
-                            // Проверяем, что клетка достаточно далеко от зданий
-                            if (IsCellAwayFromBuildings(cellPos, world, config.minBuildingGap))
+                             // Проверяем, что клетка достаточно далеко от зданий
+                             if (IsCellAwayFromBuildings(cellPos, world, config.minBuildingDistance))
                             {
                                 benchCandidates.Add(cellPos);
                             }

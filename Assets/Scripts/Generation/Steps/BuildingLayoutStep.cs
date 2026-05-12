@@ -51,7 +51,8 @@ namespace Diploma.Generation.Steps
         private void GenerateInBlocks(WorldGenConfig config, WorldData world, TileLayer roads, ref int buildingId, System.Random rng)
         {
             int attemptsPerBlock = 30;
-            int clearance = config.minBuildingGap;
+            int roadClearance = config.minBuildingGap;        // расстояние от дорог
+            int buildingClearance = config.minBuildingDistance; // расстояние между зданиями
 
             foreach (var block in world.Blocks)
             {
@@ -60,9 +61,9 @@ namespace Diploma.Generation.Steps
 
                 var placedInBlock = new List<RectInt>();
 
-                // Доступная ширина/высота interior с учётом зазоров
-                int interiorWidth = block.width - 2 * clearance;
-                int interiorHeight = block.height - 2 * clearance;
+                // Доступная ширина/высота interior с учётом зазоров от дорог
+                int interiorWidth = block.width - 2 * roadClearance;
+                int interiorHeight = block.height - 2 * roadClearance;
 
                 if (interiorWidth < 2 || interiorHeight < 2)
                     continue; // блок слишком мал для любых зданий с учётом зазоров
@@ -84,29 +85,29 @@ namespace Diploma.Generation.Steps
                     switch (side)
                     {
                         case 0: // left flush
-                            startX = block.xMin + clearance;
+                            startX = block.xMin + roadClearance;
                             // Y может варьироваться
                             int maxOffsetY = interiorHeight - buildingHeight;
                             if (maxOffsetY < 0) fits = false;
-                            else startY = block.yMin + clearance + rng.Next(0, maxOffsetY + 1);
+                            else startY = block.yMin + roadClearance + rng.Next(0, maxOffsetY + 1);
                             break;
                         case 1: // right flush
-                            startX = block.xMax - clearance - buildingWidth;
+                            startX = block.xMax - roadClearance - buildingWidth;
                             int maxOffsetY2 = interiorHeight - buildingHeight;
                             if (maxOffsetY2 < 0) fits = false;
-                            else startY = block.yMin + clearance + rng.Next(0, maxOffsetY2 + 1);
+                            else startY = block.yMin + roadClearance + rng.Next(0, maxOffsetY2 + 1);
                             break;
                         case 2: // bottom flush
-                            startY = block.yMin + clearance;
+                            startY = block.yMin + roadClearance;
                             int maxOffsetX = interiorWidth - buildingWidth;
                             if (maxOffsetX < 0) fits = false;
-                            else startX = block.xMin + clearance + rng.Next(0, maxOffsetX + 1);
+                            else startX = block.xMin + roadClearance + rng.Next(0, maxOffsetX + 1);
                             break;
                         case 3: // top flush
-                            startY = block.yMax - clearance - buildingHeight;
+                            startY = block.yMax - roadClearance - buildingHeight;
                             int maxOffsetX2 = interiorWidth - buildingWidth;
                             if (maxOffsetX2 < 0) fits = false;
-                            else startX = block.xMin + clearance + rng.Next(0, maxOffsetX2 + 1);
+                            else startX = block.xMin + roadClearance + rng.Next(0, maxOffsetX2 + 1);
                             break;
                     }
 
@@ -115,7 +116,7 @@ namespace Diploma.Generation.Steps
 
                     var buildingRect = new RectInt(startX, startY, buildingWidth, buildingHeight);
 
-                    if (CanPlaceBuilding(roads, buildingRect, placedInBlock, clearance, true))
+                    if (CanPlaceBuilding(roads, buildingRect, placedInBlock, buildingClearance, roadClearance, true))
                     {
                         int prefabId = SelectPrefabById(config.buildingPrefabIds, config.buildingPrefabWeights, rng);
 
@@ -147,6 +148,7 @@ namespace Diploma.Generation.Steps
             int height = roads.Height;
             int attemptsPerBlock = 50;
             var placedBuildings = new List<RectInt>();
+            int buildingClearance = config.minBuildingDistance;
 
             for (int attempt = 0; attempt < attemptsPerBlock; attempt++)
             {
@@ -158,7 +160,7 @@ namespace Diploma.Generation.Steps
 
                 var buildingRect = new RectInt(startX, startY, buildingWidth, buildingHeight);
 
-                if (CanPlaceBuilding(roads, buildingRect, placedBuildings, config.minBuildingGap, false))
+                if (CanPlaceBuilding(roads, buildingRect, placedBuildings, buildingClearance, roadClearance: 0, enforceRoadClearance: false))
                 {
                     int prefabId = SelectPrefabById(config.buildingPrefabIds, config.buildingPrefabWeights, rng);
 
@@ -193,7 +195,13 @@ namespace Diploma.Generation.Steps
         /// <summary>
         /// Проверяет, можно ли разместить здание в указанном месте.
         /// </summary>
-        private bool CanPlaceBuilding(TileLayer roads, RectInt buildingRect, List<RectInt> placedBuildings, int minGap, bool enforceRoadClearance)
+        /// <param name="roads">Слой дорог</param>
+        /// <param name="buildingRect">Прямоугольник здания</param>
+        /// <param name="placedBuildings">Уже размещённые здания</param>
+        /// <param name="buildingClearance">Минимальное расстояние до других зданий</param>
+        /// <param name="roadClearance">Минимальное расстояние до дорог</param>
+        /// <param name="enforceRoadClearance">Требовать ли проверку расстояния до дорог</param>
+        private bool CanPlaceBuilding(TileLayer roads, RectInt buildingRect, List<RectInt> placedBuildings, int buildingClearance, int roadClearance, bool enforceRoadClearance)
         {
             int width = roads.Width;
             int height = roads.Height;
@@ -217,14 +225,30 @@ namespace Diploma.Generation.Steps
                 }
             }
 
+            // Проверка на слишком близкое расположение к другим зданиям (с учётом зазора между зданиями)
+            foreach (var placed in placedBuildings)
+            {
+                var expanded = new RectInt(
+                    placed.xMin - buildingClearance,
+                    placed.yMin - buildingClearance,
+                    placed.width + 2 * buildingClearance,
+                    placed.height + 2 * buildingClearance
+                );
+
+                if (buildingRect.Overlaps(expanded))
+                {
+                    return false;
+                }
+            }
+
             // Проверка минимального расстояния до дорог (требуется только для блоков)
             if (enforceRoadClearance)
             {
                 var expandedForRoads = new RectInt(
-                    buildingRect.xMin - minGap,
-                    buildingRect.yMin - minGap,
-                    buildingRect.width + 2 * minGap,
-                    buildingRect.height + 2 * minGap
+                    buildingRect.xMin - roadClearance,
+                    buildingRect.yMin - roadClearance,
+                    buildingRect.width + 2 * roadClearance,
+                    buildingRect.height + 2 * roadClearance
                 );
 
                 for (int x = expandedForRoads.xMin; x < expandedForRoads.xMax; x++)
@@ -239,22 +263,6 @@ namespace Diploma.Generation.Steps
                             return false;
                         }
                     }
-                }
-            }
-
-            // Проверка на слишком близкое расположение к другим зданиям (с учётом зазора)
-            foreach (var placed in placedBuildings)
-            {
-                var expanded = new RectInt(
-                    placed.xMin - minGap,
-                    placed.yMin - minGap,
-                    placed.width + 2 * minGap,
-                    placed.height + 2 * minGap
-                );
-
-                if (buildingRect.Overlaps(expanded))
-                {
-                    return false;
                 }
             }
 
