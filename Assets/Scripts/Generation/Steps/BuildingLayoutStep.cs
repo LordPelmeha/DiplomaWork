@@ -22,60 +22,170 @@ namespace Diploma.Generation.Steps
             if (world.Roads == null)
                 throw new InvalidOperationException("BuildingLayoutStep: world.Roads is null.");
 
-            // Получаем кварталы (пока просто генерируем здания на свободных местах)
-            // В будущем можно использовать данные из BlockLayoutStep
-
             var roads = world.Roads;
+            int buildingId = 0;
+
+            // Три случая:
+            // 1) Blocks не вычислены (null) — fallback для совместимости со старыми тестами
+            // 2) Blocks вычислены и есть блоки — генерируем внутри кварталов
+            // 3) Blocks вычислены, но пуст — районов нет, зданий не генерируем
+            if (world.Blocks == null)
+            {
+                Debug.LogWarning("[BuildingLayoutStep] world.Blocks is null — using legacy whole-map generation (BlockLayoutStep missing?)");
+                GenerateOnWholeMap(config, world, roads, ref buildingId, rng);
+            }
+            else if (world.Blocks.Count > 0)
+            {
+                GenerateInBlocks(config, world, roads, ref buildingId, rng);
+            }
+            else
+            {
+                Debug.LogWarning("[BuildingLayoutStep] No valid blocks found — no buildings will be generated.");
+            }
+        }
+
+        /// <summary>
+        /// Генерация зданий внутри кварталов.
+        /// Здания прижимаются к границам квартала (дорогам) с минимальным зазором.
+        /// </summary>
+        private void GenerateInBlocks(WorldGenConfig config, WorldData world, TileLayer roads, ref int buildingId, System.Random rng)
+        {
+            int attemptsPerBlock = 30;
+            int clearance = config.minBuildingGap;
+
+            foreach (var block in world.Blocks)
+            {
+                if (block.width < 3 || block.height < 3)
+                    continue;
+
+                var placedInBlock = new List<RectInt>();
+
+                // Доступная ширина/высота interior с учётом зазоров
+                int interiorWidth = block.width - 2 * clearance;
+                int interiorHeight = block.height - 2 * clearance;
+
+                if (interiorWidth < 2 || interiorHeight < 2)
+                    continue; // блок слишком мал для любых зданий с учётом зазоров
+
+                for (int attempt = 0; attempt < attemptsPerBlock; attempt++)
+                {
+                    // Случайный размер здания (2-5, но не больше interior)
+                    int maxW = Mathf.Min(5, interiorWidth);
+                    int maxH = Mathf.Min(5, interiorHeight);
+                    int buildingWidth = rng.Next(2, maxW + 1);
+                    int buildingHeight = rng.Next(2, maxH + 1);
+
+                    // Случайная сторона примыкания (0=left, 1=right, 2=bottom, 3=top)
+                    int side = rng.Next(0, 4);
+
+                    int startX = 0, startY = 0;
+                    bool fits = true;
+
+                    switch (side)
+                    {
+                        case 0: // left flush
+                            startX = block.xMin + clearance;
+                            // Y может варьироваться
+                            int maxOffsetY = interiorHeight - buildingHeight;
+                            if (maxOffsetY < 0) fits = false;
+                            else startY = block.yMin + clearance + rng.Next(0, maxOffsetY + 1);
+                            break;
+                        case 1: // right flush
+                            startX = block.xMax - clearance - buildingWidth;
+                            int maxOffsetY2 = interiorHeight - buildingHeight;
+                            if (maxOffsetY2 < 0) fits = false;
+                            else startY = block.yMin + clearance + rng.Next(0, maxOffsetY2 + 1);
+                            break;
+                        case 2: // bottom flush
+                            startY = block.yMin + clearance;
+                            int maxOffsetX = interiorWidth - buildingWidth;
+                            if (maxOffsetX < 0) fits = false;
+                            else startX = block.xMin + clearance + rng.Next(0, maxOffsetX + 1);
+                            break;
+                        case 3: // top flush
+                            startY = block.yMax - clearance - buildingHeight;
+                            int maxOffsetX2 = interiorWidth - buildingWidth;
+                            if (maxOffsetX2 < 0) fits = false;
+                            else startX = block.xMin + clearance + rng.Next(0, maxOffsetX2 + 1);
+                            break;
+                    }
+
+                    if (!fits)
+                        continue;
+
+                    var buildingRect = new RectInt(startX, startY, buildingWidth, buildingHeight);
+
+                    if (CanPlaceBuilding(roads, buildingRect, placedInBlock, clearance, true))
+                    {
+                        int prefabId = SelectPrefabById(config.buildingPrefabIds, config.buildingPrefabWeights, rng);
+
+                        var building = new BuildingData(
+                            id: buildingId++,
+                            pos: new Vector2Int(startX, startY),
+                            w: buildingWidth,
+                            h: buildingHeight,
+                            prefabId: prefabId,
+                            type: BuildingType.Residential
+                        );
+
+                        world.AddBuilding(building);
+                        placedInBlock.Add(buildingRect);
+
+                        MarkAsWall(world, startX, startY, buildingWidth, buildingHeight);
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// Старый алгоритм генерации по всей карте (fallback).
+        /// </summary>
+        private void GenerateOnWholeMap(WorldGenConfig config, WorldData world,
+            TileLayer roads, ref int buildingId, System.Random rng)
+        {
             int width = roads.Width;
             int height = roads.Height;
-
-            int buildingId = 0;
             int attemptsPerBlock = 50;
-
-            // Проходим по карте и ищем места для зданий
-            // Простая эвристика: случайные прямоугольники вдали от дорог
             var placedBuildings = new List<RectInt>();
 
             for (int attempt = 0; attempt < attemptsPerBlock; attempt++)
             {
-                // Случайный размер здания
                 int buildingWidth = rng.Next(2, 5);
                 int buildingHeight = rng.Next(2, 5);
 
-                // Случайная позиция
                 int startX = rng.Next(1, width - buildingWidth - 1);
                 int startY = rng.Next(1, height - buildingHeight - 1);
 
                 var buildingRect = new RectInt(startX, startY, buildingWidth, buildingHeight);
 
-                // Проверяем, можно ли разместить здание
-                if (CanPlaceBuilding(roads, buildingRect, placedBuildings))
+                if (CanPlaceBuilding(roads, buildingRect, placedBuildings, config.minBuildingGap, false))
                 {
-                    // Выбираем случайный тип здания
-                    var buildingType = (BuildingType)rng.Next(0, Enum.GetValues(typeof(BuildingType)).Length);
+                    int prefabId = SelectPrefabById(config.buildingPrefabIds, config.buildingPrefabWeights, rng);
 
-                    // Создаём данные здания
                     var building = new BuildingData(
                         id: buildingId++,
                         pos: new Vector2Int(startX, startY),
                         w: buildingWidth,
                         h: buildingHeight,
-                        prefabId: GetPrefabIdForType(buildingType, rng),
-                        type: buildingType
+                        prefabId: prefabId,
+                        type: BuildingType.Residential // все здания одного типа
                     );
 
-                    // Добавляем в мир
                     world.AddBuilding(building);
                     placedBuildings.Add(buildingRect);
 
-                    // Помечаем клетки как занятые (стены зданий)
-                    for (int x = startX; x < startX + buildingWidth; x++)
-                    {
-                        for (int y = startY; y < startY + buildingHeight; y++)
-                        {
-                            world.Walls.Set(x, y, TileType.Wall);
-                        }
-                    }
+                    MarkAsWall(world, startX, startY, buildingWidth, buildingHeight);
+                }
+            }
+        }
+
+        private void MarkAsWall(WorldData world, int startX, int startY, int w, int h)
+        {
+            for (int x = startX; x < startX + w; x++)
+            {
+                for (int y = startY; y < startY + h; y++)
+                {
+                    world.Walls.Set(x, y, TileType.Wall);
                 }
             }
         }
@@ -83,7 +193,7 @@ namespace Diploma.Generation.Steps
         /// <summary>
         /// Проверяет, можно ли разместить здание в указанном месте.
         /// </summary>
-        private bool CanPlaceBuilding(TileLayer roads, RectInt buildingRect, List<RectInt> placedBuildings)
+        private bool CanPlaceBuilding(TileLayer roads, RectInt buildingRect, List<RectInt> placedBuildings, int minGap, bool enforceRoadClearance)
         {
             int width = roads.Width;
             int height = roads.Height;
@@ -95,7 +205,7 @@ namespace Diploma.Generation.Steps
                 return false;
             }
 
-            // Проверка на пересечение с дорогами
+            // Проверка на пересечение с дорогами внутри самого здания
             for (int x = buildingRect.xMin; x < buildingRect.xMax; x++)
             {
                 for (int y = buildingRect.yMin; y < buildingRect.yMax; y++)
@@ -107,10 +217,42 @@ namespace Diploma.Generation.Steps
                 }
             }
 
-            // Проверка на пересечение с другими зданиями
+            // Проверка минимального расстояния до дорог (требуется только для блоков)
+            if (enforceRoadClearance)
+            {
+                var expandedForRoads = new RectInt(
+                    buildingRect.xMin - minGap,
+                    buildingRect.yMin - minGap,
+                    buildingRect.width + 2 * minGap,
+                    buildingRect.height + 2 * minGap
+                );
+
+                for (int x = expandedForRoads.xMin; x < expandedForRoads.xMax; x++)
+                {
+                    for (int y = expandedForRoads.yMin; y < expandedForRoads.yMax; y++)
+                    {
+                        if (!roads.InBounds(x, y))
+                            continue;
+
+                        if (roads.Get(x, y) == TileType.Road)
+                        {
+                            return false;
+                        }
+                    }
+                }
+            }
+
+            // Проверка на слишком близкое расположение к другим зданиям (с учётом зазора)
             foreach (var placed in placedBuildings)
             {
-                if (buildingRect.Overlaps(placed))
+                var expanded = new RectInt(
+                    placed.xMin - minGap,
+                    placed.yMin - minGap,
+                    placed.width + 2 * minGap,
+                    placed.height + 2 * minGap
+                );
+
+                if (buildingRect.Overlaps(expanded))
                 {
                     return false;
                 }
@@ -120,14 +262,40 @@ namespace Diploma.Generation.Steps
         }
 
         /// <summary>
-        /// Возвращает ID префаба для типа здания.
+        /// Выбирает ID префаба из списка с учётом весов.
         /// </summary>
-        private int GetPrefabIdForType(BuildingType type, System.Random rng)
+        private int SelectPrefabById(int[] prefabIds, int[] weights, System.Random rng)
         {
-            // Простая мапа: тип здания -> диапазон ID префабов
-            // В реальном проекте это должно быть в PrefabCatalog
-            int baseId = (int)type * 100;
-            return baseId + rng.Next(0, 10);
+            if (prefabIds == null || prefabIds.Length == 0)
+                return 2000; // fallback
+
+            if (prefabIds.Length == 1)
+                return prefabIds[0];
+
+            if (weights == null || weights.Length != prefabIds.Length)
+            {
+                return prefabIds[rng.Next(0, prefabIds.Length)];
+            }
+
+            int totalWeight = 0;
+            for (int i = 0; i < weights.Length; i++)
+            {
+                totalWeight += weights[i];
+            }
+
+            int randomValue = rng.Next(0, totalWeight);
+            int cumulative = 0;
+
+            for (int i = 0; i < prefabIds.Length; i++)
+            {
+                cumulative += weights[i];
+                if (randomValue < cumulative)
+                {
+                    return prefabIds[i];
+                }
+            }
+
+            return prefabIds[prefabIds.Length - 1];
         }
     }
 }

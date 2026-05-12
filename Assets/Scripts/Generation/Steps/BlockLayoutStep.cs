@@ -41,13 +41,27 @@ namespace Diploma.Generation.Steps
 
                     // BFS для нахождения связной области
                     var block = FindBlock(roads, visited, new Vector2Int(x, y), rng);
-                    if (block.HasValue && block.Value.width >= 3 && block.Value.height >= 3)
+                    if (block.HasValue)
                     {
+                        var r = block.Value;
                         // Минимальный размер квартала - 3x3 клетки
-                        blocks.Add(block.Value);
+                        if (r.width >= 3 && r.height >= 3)
+                        {
+                            // Квартал должен быть полностью внутри карты (не касаться границ)
+                            // Это гарантирует, что он окружён дорогами со всех сторон
+                            if (r.xMin > 0 && r.yMin > 0 && r.xMax < width && r.yMax < height)
+                            {
+                                blocks.Add(r);
+                            }
+                        }
                     }
                 }
             }
+
+            Debug.Log($"[BlockLayoutStep] Found {blocks.Count} interior blocks (districts) out of total components");
+
+            // Сохраняем найденные блоки в world data
+            world.Blocks = blocks;
         }
 
         /// <summary>

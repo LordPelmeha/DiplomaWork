@@ -65,12 +65,36 @@ namespace Diploma.Presentation
                 .Add(new DecorationPlanStep())
                 .Add(new ValidationStep())
                 .Add(new RepairStep());
-
         }
 
         private void Start()
         {
             Generate();     
+        }
+
+        private void ConfigureMainCamera(WorldData world)
+        {
+            var cam = Camera.main;
+            if (cam == null) 
+            {
+                Debug.LogWarning("[WorldBootstrap] Main Camera not found!");
+                return;
+            }
+
+            cam.nearClipPlane = 0.01f;
+            cam.farClipPlane = 1000f;
+
+            if (cam.orthographic)
+            {
+                float mapWidth = world.Size.x;
+                float mapHeight = world.Size.y;
+                float sizeByHeight = mapHeight / 2f + 2f;
+                float sizeByWidth = (mapWidth / 2f) / cam.aspect + 2f;
+                float requiredSize = Mathf.Max(sizeByHeight, sizeByWidth);
+                cam.orthographicSize = requiredSize;
+            }
+
+            Debug.Log($"[WorldBootstrap] Camera configured: pos={cam.transform.position}, rot={cam.transform.rotation.eulerAngles}, orthoSize={cam.orthographicSize}, near={cam.nearClipPlane}, far={cam.farClipPlane}, aspect={cam.aspect}");
         }
 
         [ContextMenu("Generate")]
@@ -109,10 +133,14 @@ namespace Diploma.Presentation
 
             _lastGeneratedWorld = world;
             
+            ConfigureMainCamera(world);
+
             if (saveWorldDataForDebug && worldDataDebug != null)
             {
                 worldDataDebug.worldData = world;
             }
+
+            Debug.Log($"[WorldBootstrap] Blocks: {world.Blocks?.Count ?? 0}, Buildings: {world.Buildings?.Count ?? 0}, SpawnPlan: {world.SpawnPlan?.Entries?.Count ?? 0}");
 
             TilemapBuilder.Build(world, tileAssetSet, groundTilemap, roadsTilemap, wallsTilemap);
 

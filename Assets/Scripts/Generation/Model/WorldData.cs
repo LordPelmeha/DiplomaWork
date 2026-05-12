@@ -17,6 +17,9 @@ namespace Diploma.Generation.Model
 
         public List<BuildingData> Buildings = new List<BuildingData>();
 
+        // Blocks инициализируются в BlockLayoutStep, до этого — null
+        public List<RectInt> Blocks;
+
         public SpawnPlan SpawnPlan = new SpawnPlan();
 
         public WorldMeta Meta;

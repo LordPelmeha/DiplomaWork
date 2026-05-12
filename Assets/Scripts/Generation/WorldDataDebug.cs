@@ -31,6 +31,7 @@ namespace Diploma.Generation
         public Color graphNodeColor = Color.green;
         public Color graphEdgeColor = Color.yellow;
         public Color buildingColor = Color.blue;
+        public Color blockColor = Color.cyan;
         public Color spawnPointColor = Color.red;
 
 #if UNITY_EDITOR
@@ -46,6 +47,24 @@ namespace Diploma.Generation
                 if (groundTilemap != null && groundTilemap.name.Contains("Ground"))
                 {
                     tilemap = groundTilemap;
+                }
+            }
+
+            // Рисуем кварталы (blocks)
+            if (worldData.Blocks != null && worldData.Blocks.Count > 0)
+            {
+                Gizmos.color = blockColor;
+                foreach (var block in worldData.Blocks)
+                {
+                    Vector3 bottomLeft = CellToWorld(new Vector2Int(block.xMin, block.yMin));
+                    Vector3 topRight = CellToWorld(new Vector2Int(block.xMax, block.yMax));
+                    Vector3 center = (bottomLeft + topRight) / 2f;
+                    Vector3 size = new Vector3(
+                        Mathf.Abs(topRight.x - bottomLeft.x),
+                        Mathf.Abs(topRight.y - bottomLeft.y),
+                        1
+                    );
+                    Gizmos.DrawWireCube(center, size);
                 }
             }
 

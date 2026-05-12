@@ -17,8 +17,12 @@ namespace Diploma.Generation
         [Min(1)] public int roadRadius = 1;
 
         [Header("Buildings (используем позже)")]
-        [Min(0)] public int buildingsPerBlockMin = 2;
-        [Min(0)] public int buildingsPerBlockMax = 6;
+        [Tooltip("Минимальное расстояние (в клетках) между зданиями")]
+        [Min(0)] public int minBuildingGap = 1;
+        [Tooltip("ID префабов зданий для спавна (можно несколько)")]
+        public int[] buildingPrefabIds = new int[] { 2000 };
+        [Tooltip("Веса для каждого типа здания (должны совпадать по количеству с buildingPrefabIds)")]
+        public int[] buildingPrefabWeights = new int[] { 1 };
 
         [Header("Terrain Smoothing")]
         [Tooltip("Шанс сглаживания границы между дорогой и травой (0-100%)")]
@@ -95,8 +99,7 @@ namespace Diploma.Generation
 
                 h = Mix(h, roadRadius);
 
-                h = Mix(h, buildingsPerBlockMin);
-                h = Mix(h, buildingsPerBlockMax);
+                h = Mix(h, minBuildingGap);
 
                 h = Mix(h, terrainSmoothChance);
 

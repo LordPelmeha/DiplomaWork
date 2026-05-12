@@ -46,12 +46,9 @@ namespace Diploma.Generation.Steps
             {
                 for (int x = 0; x < width; x++)
                 {
-                    // Вычисляем Multi-Octave Perlin Noise
+                    // Вычисляем Multi-Octave Perlin Noise (результат [0,1])
                     float noiseValue = CalculateMultiOctaveNoise(
                         x, y, octaves, persistence, lacunarity, baseScale, seedOffsetX, seedOffsetY);
-
-                    // Нормализуем значение в диапазон [0, 1]
-                    noiseValue = (noiseValue + 1f) / 2f;
 
                     // Определяем тип тайла на основе шума
                     TileType tileType = NoiseToTileType(noiseValue, config);
@@ -65,6 +62,7 @@ namespace Diploma.Generation.Steps
         /// <summary>
         /// Вычисляет Multi-Octave Perlin Noise.
         /// Каждая октава добавляет детали на разных масштабах.
+        /// Возвращает значение в диапазоне [0, 1].
         /// </summary>
         private float CalculateMultiOctaveNoise(
             int x, int y,
@@ -86,8 +84,8 @@ namespace Diploma.Generation.Steps
                 float sampleX = (x * baseScale * frequency) + seedOffsetX;
                 float sampleY = (y * baseScale * frequency) + seedOffsetY;
 
-                // Получаем значение Perlin Noise [-1, 1]
-                float perlinValue = Mathf.PerlinNoise(sampleX, sampleY) * 2f - 1f;
+                // Mathf.PerlinNoise возвращает [0, 1]
+                float perlinValue = Mathf.PerlinNoise(sampleX, sampleY);
 
                 total += perlinValue * amplitude;
                 maxAmplitude += amplitude;
@@ -97,7 +95,7 @@ namespace Diploma.Generation.Steps
                 frequency *= lacunarity;
             }
 
-            // Нормализуем результат
+            // Нормализуем в [0, 1]
             return total / maxAmplitude;
         }
 

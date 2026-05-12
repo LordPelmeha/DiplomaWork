@@ -16,8 +16,9 @@ MonoBehaviour:
   districtCount: 8
   extraEdges: 3
   roadRadius: 1
-  buildingsPerBlockMin: 2
-  buildingsPerBlockMax: 6
+  minBuildingGap: 6
+  buildingPrefabIds: d0070000d1070000d2070000
+  buildingPrefabWeights: 01000000
   terrainSmoothChance: 30
   biomeScale: 0.1
   biomeOctaves: 4

@@ -13,12 +13,12 @@ MonoBehaviour:
   m_Name: PrefabCatalog
   m_EditorClassIdentifier: Assembly-CSharp::Diploma.Generation.PrefabCatalog
   entries:
-  - id: 0
-    prefab: {fileID: 3709804157328469555, guid: 9080463e59c7374429edae7b936d0d8e, type: 3}
-  - id: 100
-    prefab: {fileID: 5539323571891192860, guid: 3d13462b64e00d94d8a53e560f0067ff, type: 3}
-  - id: 200
-    prefab: {fileID: 8396551933047771356, guid: 24817565761d2ce498b22f2994730717, type: 3}
+  - id: 2000
+    prefab: {fileID: 3068085889172866998, guid: 3a01a25e77eb2084792ac5c41ffeec3a, type: 3}
+  - id: 2001
+    prefab: {fileID: 3009294954687283031, guid: 52be664691276b840bd944aa01cbd5af, type: 3}
+  - id: 2003
+    prefab: {fileID: 7703654882814521103, guid: b9f58ed47e6f2e34e849d8af6f61ab37, type: 3}
   - id: 1000
     prefab: {fileID: 137650, guid: 826b6a0b570e8460990010fa615b5a2a, type: 3}
   - id: 1001
