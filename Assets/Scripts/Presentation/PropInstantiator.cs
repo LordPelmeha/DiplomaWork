@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 using UnityEngine.Tilemaps;
 using Diploma.Generation;
@@ -5,6 +6,11 @@ using Diploma.Generation.Model;
 
 namespace Diploma.Presentation
 {
+    /// <summary>
+    /// Создаёт GameObjects из SpawnPlan и BuildingData.
+    /// Sorting via renderer.sortingOrder based on grid coordinates.
+    /// Buildings use Alpha-Clipped transparent materials to respect sortingOrder.
+    /// </summary>
     public static class PropInstantiator
     {
         public static void Instantiate(SpawnPlan spawnPlan, PrefabCatalog catalog, Tilemap tilemap, Transform parent = null, bool useYRotation = true, bool randomTreeRotation = false, TileLayer roads = null)
@@ -19,9 +25,8 @@ namespace Diploma.Presentation
             {
                 if (catalog.TryGetPrefab(entry.prefabId, out GameObject prefab))
                 {
-                    Vector3Int cellPos = new Vector3Int(entry.cellPos.x, entry.cellPos.y, 0);
+                    Vector3Int cellPos = new Vector3Int(entry.cellPos.x, entry.cellPos.y, -1);
                     Vector3 worldPos = tilemap.GetCellCenterWorld(cellPos);
-                    // Z stays 0; use sortingOrder/renderQueue for depth ordering.
 
                     Quaternion finalRotation;
                     if (entry.prefabId == 1004 && roads != null)
@@ -51,50 +56,20 @@ namespace Diploma.Presentation
                         finalRotation = prefabRotation * rotationOffset;
                     }
 
-                    GameObject instance = Object.Instantiate(prefab, worldPos, finalRotation, parent);
+                    GameObject instance = GameObject.Instantiate(prefab, worldPos, finalRotation, parent);
                     instance.name = $"Spawned_{entry.prefabId}_{entry.cellPos.x}_{entry.cellPos.y}";
                     instance.layer = 0;
 
-                    // For isometric depth sorting: use (x + y) as depth key.
-                    // Objects with larger (x+y) are further away (background) and should have lower sorting order.
-                    // Multiply by 100 to ensure sufficient separation across map.
                     int depth = entry.cellPos.x + entry.cellPos.y;
-                    int depthOffset = -depth * 100;
-                    Setup3DObjectSorting(instance, 3000, depthOffset);
+                    // База 30000: объекты с меньшим depth (ближе к камере) получают больший sortingOrder.
+                    // У tav-tiles sortingOrder=0, поэтому 30000 гарантирует, что объекты будут выше.
+                    int order = 30000 - depth * 100;
+                    SetupSortingAndMaterial(instance, order);
                 }
                 else
                 {
                     Debug.LogWarning($"Prefab ID {entry.prefabId} not found.");
                 }
-            }
-        }
-
-        private static void Setup3DObjectSorting(GameObject obj, int baseSortingOrder, int renderQueueOffset)
-        {
-            var renderers = obj.GetComponentsInChildren<Renderer>();
-            foreach (var renderer in renderers)
-            {
-                // sortingOrder for 2D renderers
-                renderer.sortingOrder = baseSortingOrder + renderQueueOffset;
-
-                if (renderer is MeshRenderer || renderer is SkinnedMeshRenderer)
-                {
-                    var materials = renderer.materials;
-                    for (int i = 0; i < materials.Length; i++)
-                    {
-                        var mat = materials[i];
-                        if (mat != null)
-                        {
-                            // Higher renderQueue for lower Y (smaller Y) -> draws later (on top)
-                            mat.renderQueue = 5000 + renderQueueOffset;
-                        }
-                    }
-                    renderer.materials = materials;
-                }
-
-                // Expand bounds slightly
-                var localBounds = renderer.localBounds;
-                renderer.localBounds = new Bounds(localBounds.center, localBounds.size * 1.5f);
             }
         }
 
@@ -112,24 +87,60 @@ namespace Diploma.Presentation
                 {
                     Vector3Int cellPos = new Vector3Int(building.position.x, building.position.y, 0);
                     Vector3 worldPos = tilemap.GetCellCenterWorld(cellPos);
-                    // Z = 0
 
                     Quaternion prefabRotation = prefab.transform.rotation;
                     int rotationAngle = randomRotation ? (rng?.Next(0, 4) ?? 0) * 90 : building.rotationIndex * 90;
                     Quaternion rotationOffset = Quaternion.Euler(0, rotationAngle, 0);
                     Quaternion finalRotation = prefabRotation * rotationOffset;
 
-                    GameObject instance = Object.Instantiate(prefab, worldPos, finalRotation, parent);
+                    GameObject instance = GameObject.Instantiate(prefab, worldPos, finalRotation, parent);
                     instance.name = $"Building_{building.id}_{building.type}";
                     instance.layer = 0;
 
                     int depth = building.position.x + building.position.y;
-                    int depthOffset = -depth * 100;
-                    Setup3DObjectSorting(instance, 3000, depthOffset);
+                    int order = 30000 - depth * 100;
+                    SetupSortingAndMaterial(instance, order);
                 }
                 else
                 {
                     Debug.LogWarning($"Building prefab ID {building.prefabId} not found.");
+                }
+            }
+        }
+
+        /// <summary>
+        /// Настраивает sortingOrder и конвертирует материал в Cutout режим для корректной сортировки.
+        /// Without SortingGroup, sets order per-renderer. Opaque -> Cutout conversion.
+        /// </summary>
+        private static void SetupSortingAndMaterial(GameObject root, int sortingOrder)
+        {
+            // Настраиваем все Renderer'ы
+            var renderers = root.GetComponentsInChildren<Renderer>(true);
+            foreach (var renderer in renderers)
+            {
+                renderer.sortingLayerName = "Default";
+                renderer.sortingOrder = sortingOrder;
+
+                // Расширяем bounds для надёжности (как в оригинале)
+                var localBounds = renderer.localBounds;
+                renderer.localBounds = new Bounds(localBounds.center, localBounds.size * 1.5f);
+
+                // Для MeshRenderer'ов конвертируем материал в Cutout режим,
+                // чтобы они подчинялись sortingOrder (попадают в Transparent queue)
+                if (renderer is MeshRenderer || renderer is SkinnedMeshRenderer)
+                {
+                    var mat = renderer.material; // instance, не затрагиваем asset
+                    if (mat != null)
+                    {
+                        // Устанавливаем режим рендеринга в Cutout (Alpha Clipping)
+                        // Standard shader: _Mode = 0(Opaque), 1(Cutout), 2(Fade), 3(Transparent)
+                        mat.SetFloat("_Mode", 1f);      // Cutout
+                        mat.SetFloat("_Cutoff", 0.5f);
+                        mat.SetInt("_SrcBlend", 1);     // One (BlendMode.One)
+                        mat.SetInt("_DstBlend", 0);     // Zero (BlendMode.Zero)
+                        mat.SetInt("_ZWrite", 1);       // пишем в Z-buffer
+                        mat.renderQueue = 3000; // Transparent queue (same as sprites)
+                    }
                 }
             }
         }
@@ -153,15 +164,15 @@ namespace Diploma.Presentation
 
             if (hasHorizontalRoad && !hasVerticalRoad)
             {
-                return Quaternion.Euler(-25f, -85f, 40f);
+                return Quaternion.Euler(-20f, -45f, 20f);
             }
             else if (hasVerticalRoad && !hasHorizontalRoad)
             {
-                return Quaternion.Euler(25f, -85f, 50f);
+                return Quaternion.Euler(-20f, 50f, 20f);
             }
             else
             {
-                return Quaternion.Euler(-25f, -85f, 40f);
+                return Quaternion.Euler(-20f, -45f, 20f);
             }
         }
     }

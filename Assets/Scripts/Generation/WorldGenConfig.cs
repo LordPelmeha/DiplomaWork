@@ -85,6 +85,8 @@ namespace Diploma.Generation
         [Header("Benches")]
         [Tooltip("ID префаба скамейки")]
         public int benchPrefabId = 1004;
+        [Tooltip("Минимальное расстояние (в клетках) от скамеек до любых других объектов (зданий, декораций)")]
+        [Min(0)] public int minBenchDistance = 1;
 
         public uint ComputeStableHash()
         {
@@ -146,6 +148,10 @@ namespace Diploma.Generation
                 }
                 h = Mix(h, lampInterval);
                 h = Mix(h, minRoadSegmentLength);
+
+                // Bench hash
+                h = Mix(h, benchPrefabId);
+                h = Mix(h, minBenchDistance);
 
                 return h;
             }

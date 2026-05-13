@@ -151,15 +151,17 @@ namespace Diploma.Generation.Steps
                             }
                         }
 
-                        if (adjacentToRoad)
-                        {
-                            Vector2Int cellPos = new Vector2Int(x, y);
-                             // Проверяем, что клетка достаточно далеко от зданий
-                             if (IsCellAwayFromBuildings(cellPos, world, config.minBuildingDistance))
-                            {
-                                benchCandidates.Add(cellPos);
-                            }
-                        }
+                if (adjacentToRoad)
+                {
+                    Vector2Int cellPos = new Vector2Int(x, y);
+                    // Проверяем, что клетка достаточно далеко от зданий
+                    if (!IsCellAwayFromBuildings(cellPos, world, config.minBuildingDistance))
+                        continue;
+                    // Проверяем расстояние до других декораций (деревья, фонари, уже размещённые скамейки)
+                    if (!IsCellAwayFromSpawnedProps(cellPos, world, config.minBenchDistance))
+                        continue;
+                    benchCandidates.Add(cellPos);
+                }
                     }
                 }
 
@@ -382,24 +384,55 @@ namespace Diploma.Generation.Steps
         }
 
         /// <summary>
-        /// Проверяет, что клетка находится на расстоянии не менее minGap от всех зданий.
+        /// Проверяет, можно ли разместить здание в указанном месте.
         /// </summary>
-        private bool IsCellAwayFromBuildings(Vector2Int cellPos, WorldData world, int minGap)
+        private bool IsCellAwayFromBuildings(Vector2Int cellPos, WorldData world, int minDistance)
         {
+            if (world.Buildings == null) return true;
+
             foreach (var building in world.Buildings)
             {
-                // Расширяем прямоугольник здания на minGap со всех сторон
+                var buildingRect = new RectInt(
+                    building.position.x,
+                    building.position.y,
+                    building.width,
+                    building.height
+                );
+
                 var expanded = new RectInt(
-                    building.position.x - minGap,
-                    building.position.y - minGap,
-                    building.width + 2 * minGap,
-                    building.height + 2 * minGap
+                    buildingRect.xMin - minDistance,
+                    buildingRect.yMin - minDistance,
+                    buildingRect.width + 2 * minDistance,
+                    buildingRect.height + 2 * minDistance
                 );
 
                 if (expanded.Contains(cellPos))
-                {
                     return false;
-                }
+            }
+            return true;
+        }
+
+        /// <summary>
+        /// Проверяет, что клетка достаточно далеко от всех уже размещённых декораций (деревья, фонари, скамейки).
+        /// </summary>
+        private bool IsCellAwayFromSpawnedProps(Vector2Int cellPos, WorldData world, int minDistance)
+        {
+            if (world.SpawnPlan == null) return true;
+
+            var candidateRect = new RectInt(cellPos.x, cellPos.y, 1, 1);
+
+            foreach (var entry in world.SpawnPlan.Entries)
+            {
+                var placedRect = new RectInt(entry.cellPos.x, entry.cellPos.y, 1, 1);
+                var expanded = new RectInt(
+                    placedRect.xMin - minDistance,
+                    placedRect.yMin - minDistance,
+                    placedRect.width + 2 * minDistance,
+                    placedRect.height + 2 * minDistance
+                );
+
+                if (candidateRect.Overlaps(expanded))
+                    return false;
             }
             return true;
         }
