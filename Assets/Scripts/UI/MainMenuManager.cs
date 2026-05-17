@@ -1,70 +1,81 @@
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
-using UnityEngine.SceneManagement;
 
 namespace Diploma.UI
 {
     /// <summary>
-    /// Менеджер главного меню.
+    /// Управляет главным меню:seed ввод, старт игры, выход, открытие настроек.
     /// </summary>
     public class MainMenuManager : MonoBehaviour
     {
         [Header("UI References")]
-        [Tooltip("Поле ввода seed")]
         public TMP_InputField seedInputField;
-        
-        [Tooltip("Кнопка рандомизации seed")]
         public Button randomizeButton;
-        
-        [Tooltip("Кнопка старта игры")]
         public Button startButton;
-        
-        [Tooltip("Кнопка выхода")]
         public Button exitButton;
+        public Button settingsButton;
 
         [Header("Settings")]
-        [Tooltip("Название сцены с игрой")]
         public string gameSceneName = "Main";
-        
-        [Tooltip("Seed по умолчанию")]
         public int defaultSeed = 12345;
 
-        private void Awake()
-        {
-            // Устанавливаем время в паузу (меню не на паузе)
-            Time.timeScale = 1f;
-        }
+        [Header("References")]
+        public SettingsManager settingsManager;
+        public ErrorDialog errorDialog;
 
         private void Start()
         {
-            // Инициализация UI
             InitializeUI();
-            
-            // Подписка на кнопки
-            randomizeButton.onClick.AddListener(OnRandomizeSeedClicked);
-            startButton.onClick.AddListener(OnStartGameClicked);
-            exitButton.onClick.AddListener(OnExitGameClicked);
+            SubscribeButtons();
         }
 
         private void OnDestroy()
         {
-            // Отписка от кнопок
-            randomizeButton.onClick.RemoveListener(OnRandomizeSeedClicked);
-            startButton.onClick.RemoveListener(OnStartGameClicked);
-            exitButton.onClick.RemoveListener(OnExitGameClicked);
+            UnsubscribeButtons();
         }
 
         /// <summary>
-        /// Инициализация UI (установка seed по умолчанию).
+        /// Инициализирует UI значениями по умолчанию.
         /// </summary>
         private void InitializeUI()
         {
-            seedInputField.text = SeedUtils.SeedToString(defaultSeed);
+            if (seedInputField != null)
+                seedInputField.text = SeedUtils.SeedToString(defaultSeed);
         }
 
         /// <summary>
-        /// Кнопка рандомизации seed.
+        /// Подписывается на события кнопок.
+        /// </summary>
+        private void SubscribeButtons()
+        {
+            if (randomizeButton != null)
+                randomizeButton.onClick.AddListener(OnRandomizeSeedClicked);
+            if (startButton != null)
+                startButton.onClick.AddListener(OnStartGameClicked);
+            if (exitButton != null)
+                exitButton.onClick.AddListener(OnExitGameClicked);
+            if (settingsButton != null)
+                settingsButton.onClick.AddListener(OnSettingsClicked);
+        }
+
+        /// <summary>
+        /// Отписывается от событий кнопок.
+        /// </summary>
+        private void UnsubscribeButtons()
+        {
+            if (randomizeButton != null)
+                randomizeButton.onClick.RemoveListener(OnRandomizeSeedClicked);
+            if (startButton != null)
+                startButton.onClick.RemoveListener(OnStartGameClicked);
+            if (exitButton != null)
+                exitButton.onClick.RemoveListener(OnExitGameClicked);
+            if (settingsButton != null)
+                settingsButton.onClick.RemoveListener(OnSettingsClicked);
+        }
+
+        /// <summary>
+        /// Генерация случайного seed.
         /// </summary>
         private void OnRandomizeSeedClicked()
         {
@@ -73,36 +84,62 @@ namespace Diploma.UI
         }
 
         /// <summary>
-        /// Кнопка старта игры.
+        /// Открытие панели настроек.
         /// </summary>
-        private void OnStartGameClicked()
+        private void OnSettingsClicked()
         {
-            // Получаем seed из поля (или дефолтный если пусто)
-            string seedText = seedInputField.text;
-            int seed = SeedUtils.StringToSeed(seedText);
-            
-            // Сохраняем seed в PlayerPrefs для использования в игре
-            PlayerPrefs.SetInt("GameSeed", seed);
-            PlayerPrefs.Save();
-            
-            Debug.Log($"[MainMenu] Starting game with seed: {seed}");
-            
-            // Загружаем сцену с игрой
-            SceneManager.LoadScene(gameSceneName);
+            if (settingsManager != null)
+            {
+                settingsManager.OpenSettings();
+            }
+            else
+            {
+                Debug.LogWarning("[MainMenu] SettingsManager not assigned!");
+            }
         }
 
         /// <summary>
-        /// Кнопка выхода из игры.
+        /// Старт игры — загрузка сцены Main.
+        /// </summary>
+        private void OnStartGameClicked()
+        {
+            int seed = ParseSeed(seedInputField.text);
+            PlayerPrefs.SetInt("GameSeed", seed);
+            UnityEngine.SceneManagement.SceneManager.LoadScene(gameSceneName);
+        }
+
+        /// <summary>
+        /// Выход из игры.
         /// </summary>
         private void OnExitGameClicked()
         {
-            Debug.Log("[MainMenu] Exiting game...");
-            
-            #if UNITY_EDITOR
-                UnityEditor.EditorApplication.isPlaying = false;
-            #else
-                Application.Quit();
-            #endif
+    #if UNITY_EDITOR
+            UnityEditor.EditorApplication.isPlaying = false;
+    #else
+            Application.Quit();
+    #endif
+        }
+
+        /// <summary>
+        /// Преобразует текст seed в число.
+        /// </summary>
+        private int ParseSeed(string text)
+        {
+            if (string.IsNullOrWhiteSpace(text))
+                return defaultSeed;
+
+            if (int.TryParse(text, out int seed))
+                return seed;
+
+            // Fallback: стабильный хеш строки (детерминированный)
+            // Используем простой суммативный хеш
+            unchecked
+            {
+                int hash = 0;
+                foreach (char c in text)
+                    hash = (hash * 31) + c;
+                return Mathf.Abs(hash);
+            }
         }
     }
 }

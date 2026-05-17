@@ -4,6 +4,9 @@ using Diploma.Generation;
 using Diploma.Generation.Model;
 using Diploma.Generation.Pipeline;
 using Diploma.Generation.Steps;
+using Diploma.Generation.Validation;
+using Diploma.UI;
+using System.Collections;
 
 namespace Diploma.Presentation
 {
@@ -49,8 +52,16 @@ namespace Diploma.Presentation
         [Tooltip("Максимальное количество попыток генерации (0 = без ограничений)")]
         [Min(0)] public int maxGenerationAttempts = 3;
 
+        [Header("UI")]
+        [Tooltip("UI для отображения статуса генерации")]
+        public GenerationStatusUI statusUI;
+
+        [Tooltip("Диалог для отображения ошибок (опционально)")]
+        public ErrorDialog errorDialog;
+
         private WorldGenPipeline _pipeline;
         private WorldData _lastGeneratedWorld;
+        private bool isGenerating = false;
 
         private void Awake()
         {
@@ -69,7 +80,95 @@ namespace Diploma.Presentation
 
         private void Start()
         {
-            Generate();     
+            StartCoroutine(GenerateRoutine());
+        }
+
+        private IEnumerator GenerateRoutine()
+        {
+            isGenerating = true;
+
+            // Показываем UI статуса
+            if (statusUI != null)
+            {
+                statusUI.Show("Generating World...");
+                yield return null; // Даём кадр на отображение
+            }
+
+            int finalSeed;
+            if (useRandomSeed)
+            {
+                finalSeed = UnityEngine.Random.Range(int.MinValue, int.MaxValue);
+            }
+            else if (usePlayerPrefsSeed && PlayerPrefs.HasKey("GameSeed"))
+            {
+                finalSeed = PlayerPrefs.GetInt("GameSeed");
+                Debug.Log($"[WorldBootstrap] Using seed from PlayerPrefs: {finalSeed}");
+            }
+            else
+            {
+                finalSeed = seed;
+                Debug.Log($"[WorldBootstrap] Using default seed: {finalSeed}");
+            }
+
+            var generateResult = WorldGeneratorService.GenerateWithRetries(
+                finalSeed, config, _pipeline, maxGenerationAttempts);
+            WorldData world = generateResult.world;
+            int attempts = generateResult.attempts;
+
+            _lastGeneratedWorld = world;
+
+            // Validate
+            var validation = WorldValidator.Validate(world);
+            if (!validation.IsValid)
+            {
+                string errorMsg = string.Join("; ", validation.Errors);
+                Debug.LogError($"[WorldBootstrap] World generation failed: {errorMsg}");
+
+                if (statusUI != null)
+                    statusUI.ShowError(errorMsg);
+
+                if (errorDialog != null)
+                    errorDialog.ShowError("Failed to generate world with current settings.\n\n" + errorMsg);
+
+                isGenerating = false;
+                yield break;
+            }
+
+            if (statusUI != null)
+            {
+                statusUI.SetProgress(0.5f, "Building tilemaps...");
+                yield return null;
+            }
+
+            ConfigureMainCamera(world);
+
+            if (saveWorldDataForDebug && worldDataDebug != null)
+            {
+                worldDataDebug.worldData = world;
+            }
+
+            Debug.Log($"[WorldBootstrap] Blocks: {world.Blocks?.Count ?? 0}, Buildings: {world.Buildings?.Count ?? 0}, SpawnPlan: {world.SpawnPlan?.Entries?.Count ?? 0}");
+
+            TilemapBuilder.Build(world, tileAssetSet, groundTilemap, roadsTilemap, wallsTilemap);
+
+            if (statusUI != null)
+            {
+                statusUI.SetProgress(0.8f, "Spawning props...");
+                yield return null;
+            }
+
+            if (prefabCatalog != null)
+            {
+                PropInstantiator.Instantiate(world.SpawnPlan, prefabCatalog, groundTilemap, spawnedObjectsParent, useYRotation, randomTreeRotation, world.Roads);
+                PropInstantiator.InstantiateBuildings(world.Buildings, prefabCatalog, groundTilemap, spawnedObjectsParent, randomBuildingRotation);
+            }
+
+            Debug.Log($"World generated. Seed={world.Meta.Seed}, ConfigHash={world.Meta.ConfigHash}, WorldHash={world.Meta.WorldHash}, GenVer={world.Meta.GeneratorVersion}, Attempts={attempts}");
+
+            if (statusUI != null)
+                statusUI.Hide();
+
+            isGenerating = false;
         }
 
         private void ConfigureMainCamera(WorldData world)
@@ -100,57 +199,8 @@ namespace Diploma.Presentation
         [ContextMenu("Generate")]
         public void Generate()
         {
-            if (config == null)
-            {
-                Debug.LogError("WorldBootstrap: config is null.");
-                return;
-            }
-
-            if (tileAssetSet == null || groundTilemap == null || roadsTilemap == null || wallsTilemap == null)
-            {
-                Debug.LogError("WorldBootstrap: tile assets or tilemaps not assigned.");
-                return;
-            }
-
-            int finalSeed;
-            if (useRandomSeed)
-            {
-                finalSeed = UnityEngine.Random.Range(int.MinValue, int.MaxValue);
-            }
-            else if (usePlayerPrefsSeed && PlayerPrefs.HasKey("GameSeed"))
-            {
-                finalSeed = PlayerPrefs.GetInt("GameSeed");
-                Debug.Log($"[WorldBootstrap] Using seed from PlayerPrefs: {finalSeed}");
-            }
-            else
-            {
-                finalSeed = seed;
-                Debug.Log($"[WorldBootstrap] Using default seed: {finalSeed}");
-            }
-
-            var (world, attempts) = WorldGeneratorService.GenerateWithRetries(
-                finalSeed, config, _pipeline, maxGenerationAttempts);
-
-            _lastGeneratedWorld = world;
-            
-            ConfigureMainCamera(world);
-
-            if (saveWorldDataForDebug && worldDataDebug != null)
-            {
-                worldDataDebug.worldData = world;
-            }
-
-            Debug.Log($"[WorldBootstrap] Blocks: {world.Blocks?.Count ?? 0}, Buildings: {world.Buildings?.Count ?? 0}, SpawnPlan: {world.SpawnPlan?.Entries?.Count ?? 0}");
-
-            TilemapBuilder.Build(world, tileAssetSet, groundTilemap, roadsTilemap, wallsTilemap);
-
-            if (prefabCatalog != null)
-            {
-                PropInstantiator.Instantiate(world.SpawnPlan, prefabCatalog, groundTilemap, spawnedObjectsParent, useYRotation, randomTreeRotation, world.Roads);
-                PropInstantiator.InstantiateBuildings(world.Buildings, prefabCatalog, groundTilemap, spawnedObjectsParent, randomBuildingRotation);
-            }
-
-            Debug.Log($"World generated. Seed={world.Meta.Seed}, ConfigHash={world.Meta.ConfigHash}, WorldHash={world.Meta.WorldHash}, GenVer={world.Meta.GeneratorVersion}, Attempts={attempts}");
+            if (!isGenerating)
+                StartCoroutine(GenerateRoutine());
         }
 
         public WorldData GetLastGeneratedWorld() => _lastGeneratedWorld;
