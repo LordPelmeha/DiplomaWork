@@ -1099,7 +1099,7 @@ MonoBehaviour:
   closeButton: {fileID: 1879947165}
   resetButton: {fileID: 1760793376}
   settingsContent: {fileID: 1565560233}
-  settingItemPrefab: {fileID: 8407011367573566405, guid: 84b826a0d3297524cb9aa02d97555291, type: 3}
+  settingItemPrefab: {fileID: 1181682239828639642, guid: 3fcc7fc422305ac479f4f79b5473967c, type: 3}
   config: {fileID: 11400000, guid: 539850174dd39c248988f63777295ea7, type: 2}
   excludeBuildingPrefabs: 1
   excludeTreePrefabs: 1
@@ -1123,7 +1123,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Diploma.Scripts::Diploma.UI.SettingsUISetup
   mainMenuManager: {fileID: 634516470}
   settingsManager: {fileID: 634516472}
-  settingItemPrefab: {fileID: 8407011367573566405, guid: 84b826a0d3297524cb9aa02d97555291, type: 3}
+  settingItemPrefab: {fileID: 1181682239828639642, guid: 3fcc7fc422305ac479f4f79b5473967c, type: 3}
 --- !u!1 &690740910
 GameObject:
   m_ObjectHideFlags: 0
@@ -1995,11 +1995,11 @@ RectTransform:
   m_Children: []
   m_Father: {fileID: 439080440}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 1}
+  m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 1, y: 1}
   m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: -573, y: 20}
-  m_Pivot: {x: 0, y: 1}
+  m_SizeDelta: {x: -30, y: 0}
+  m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1565560234
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2408,9 +2408,9 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.ScrollRect
   m_Content: {fileID: 1565560233}
-  m_Horizontal: 1
+  m_Horizontal: 0
   m_Vertical: 1
-  m_MovementType: 1
+  m_MovementType: 0
   m_Elasticity: 0.1
   m_Inertia: 1
   m_DecelerationRate: 0.135

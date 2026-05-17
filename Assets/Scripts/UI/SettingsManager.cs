@@ -116,17 +116,25 @@ namespace Diploma.UI
                 if (settingsContent != null && !IsContentInsideScrollView(settingsContent))
                 {
                     Debug.LogWarning("[SettingsManager] settingsContent is not inside SettingsScrollView/Viewport, re-finding...");
-                    ScrollRect scroll = settingsPanel.GetComponentInChildren<ScrollRect>(true);
-                    if (scroll != null && scroll.content != null)
+                    ScrollRect scrollForRelink = settingsPanel.GetComponentInChildren<ScrollRect>(true);
+                    if (scrollForRelink != null && scrollForRelink.content != null)
                     {
-                        settingsContent = scroll.content;
+                        settingsContent = scrollForRelink.content;
                         Debug.Log($"[SettingsManager] Re-linked settingsContent to: {settingsContent.name}");
                     }
                 }
 
                 // Fix broken ScrollRect / Viewport that clips everything
+                // Fix broken ScrollRect / Viewport that clips everything
                 FixScrollRect();
 
+                // Force Viewport VLG to compute its final width BEFORE children are created
+                ScrollRect srForViewport = settingsPanel.GetComponentInChildren<ScrollRect>(true);
+                if (srForViewport != null && srForViewport.viewport != null)
+                {
+                    LayoutRebuilder.ForceRebuildLayoutImmediate(srForViewport.viewport.GetComponent<RectTransform>());
+                    Debug.Log("[SettingsManager] Viewport VLG rebuilt. Viewport rect=" + srForViewport.viewport.GetComponent<RectTransform>().rect);
+                }
                 LoadSettings();
 
                 foreach (Transform child in settingsContent)
@@ -136,6 +144,13 @@ namespace Diploma.UI
                 parameterLabels.Clear();
 
                 CreateSettingItems();
+
+                // Force settingsContent VLG to recompute children widths/heights after items are created
+                if (settingsContent != null)
+                {
+                    LayoutRebuilder.ForceRebuildLayoutImmediate(settingsContent.GetComponent<RectTransform>());
+                    Debug.Log("[SettingsManager] SettingsContent VLG rebuilt. Content rect=" + settingsContent.GetComponent<RectTransform>().rect);
+                }
 
                  // Force layout and canvas system to update,
                  // otherwise ScrollRect keeps stale content positions from before items were added
@@ -209,13 +224,16 @@ namespace Diploma.UI
                     contentRtForHeight.sizeDelta = new Vector2(contentRtForHeight.sizeDelta.x, totalContentHeight);
                     Debug.Log($"[SettingsManager] Set content height to {totalContentHeight:F0}. Rect: {contentRtForHeight.rect}");
 
-                    // Rebuild ScrollRect so it picks up new content size
-                    ScrollRect sr2 = settingsPanel.GetComponentInChildren<ScrollRect>(true);
-                    if (sr2 != null)
+                // Rebuild ScrollRect so it picks up new content size
+                if (settingsPanel != null)
+                {
+                    ScrollRect scrollForRebuild = settingsPanel.GetComponentInChildren<ScrollRect>(true);
+                    if (scrollForRebuild != null)
                     {
-                        LayoutRebuilder.ForceRebuildLayoutImmediate(sr2.GetComponent<RectTransform>());
-                        Debug.Log($"[SettingsManager] Rebuilt ScrollRect. Content size: {sr2.content?.GetComponent<RectTransform>()?.rect}");
+                        LayoutRebuilder.ForceRebuildLayoutImmediate(scrollForRebuild.GetComponent<RectTransform>());
+                        Debug.Log($"[SettingsManager] Rebuilt ScrollRect. Content size: {scrollForRebuild.content?.GetComponent<RectTransform>()?.rect}");
                     }
+                }
                 }
 
                 settingsPanel.SetActive(true);
@@ -402,44 +420,91 @@ namespace Diploma.UI
                 if (uiLayer >= 0)
                     itemGO.layer = uiLayer;
 
-                // Fix child anchors — both Label and Slider TOP-anchored so VLG stacks them vertically
+                // ---------- root (setting item wrapper) ----------
                 RectTransform rootRt = itemGO.GetComponent<RectTransform>();
                 if (rootRt != null)
                 {
-                    rootRt.anchorMin = new Vector2(0, 1);
-                    rootRt.anchorMax = new Vector2(1, 1);
-                    rootRt.pivot = new Vector2(0.5f, 1);
-                    rootRt.sizeDelta = new Vector2(0, 85); // label 50 + spacing 4 + slider 31
+                    // root anchors spread horizontally (0,0)-(1,0): top edge pinned to parent top
+                    rootRt.anchorMin = new Vector2(0, 0);
+                    rootRt.anchorMax = new Vector2(1, 0);
+                    rootRt.pivot = new Vector2(0.5f, 1f);
                     rootRt.anchoredPosition = Vector2.zero;
-                    Debug.Log("[SettingsManager] Fixed root RT anchorMin=" + rootRt.anchorMin + " anchorMax=" + rootRt.anchorMax + " sizeDelta=" + rootRt.sizeDelta);
+                    Debug.Log("[SettingsManager] Fixed root RT anchorMin=" + rootRt.anchorMin + " anchorMax=" + rootRt.anchorMax);
                 }
                 else
                 {
                     Debug.LogWarning("[SettingsManager] No RectTransform on root!");
                 }
 
-                // VLG already on prefab; confirm / add if missing
+                // root explicit height — parent VLG reads this via LayoutElement
+                LayoutElement rootLe = itemGO.GetComponent<LayoutElement>();
+                if (rootLe == null)
+                    rootLe = itemGO.AddComponent<LayoutElement>();
+                rootLe.preferredHeight = 85f; // 50 label + 4 spacing + 31 slider
+                rootLe.minHeight = 85f;
+                rootLe.flexibleHeight = 0f;
+                rootLe.preferredWidth = -1f;     // fill parent width
+                rootLe.minWidth = 0f;
+
+                // VLG stacks children (Label above Slider) vertically inside each item
                 VerticalLayoutGroup vlg = itemGO.GetComponent<VerticalLayoutGroup>();
                 if (vlg == null)
                 {
                     vlg = itemGO.AddComponent<VerticalLayoutGroup>();
-                    vlg.padding = new RectOffset(0, 0, 0, 0);
-                    vlg.spacing = 4;
-                    vlg.childControlWidth = true;
-                    vlg.childControlHeight = true;
-                    vlg.childForceExpandWidth = true;
-                    vlg.childForceExpandHeight = false;
+                }
+                vlg.padding = new RectOffset(0, 0, 0, 0);
+                vlg.spacing = 4;
+                vlg.childControlWidth = true;
+                vlg.childControlHeight = true;
+                vlg.childForceExpandWidth = true;
+                vlg.childForceExpandHeight = false;
+
+                // ---------- children layout using LayoutElement (NOT FixChildAnchor) ----------
+                // Previous approach used FixChildAnchor with sizeDelta=(0, h):
+                //   sizeDelta.x = 0 caused width to collapse to 0 with anchorMin.x=anchorMax.x=0,
+                //   and the inner VLG measured slider's LayoutElement.preferredHeight = 0
+                //   (never overridden), producing cascade → height=0 for whole item.
+
+                // Fix: use LayoutElement components on children + stretch X anchors for full width
+                if (itemGO.transform.Find("Label") is Transform labelTf
+                    && labelTf.GetComponent<RectTransform>() is RectTransform labelRt)
+                {
+                    // Pin TOP of label to TOP of parent item; stretch FULL width via anchors
+                    labelRt.anchorMin = new Vector2(0f, 1f);
+                    labelRt.anchorMax = new Vector2(1f, 1f);
+                    labelRt.pivot = new Vector2(0.5f, 1f);
+                    labelRt.anchoredPosition = new Vector2(0f, 0f);
+                    // SizeDelta.y is the child pixel height; VLG uses LayoutElement.preferredHeight instead
+                    labelRt.sizeDelta = new Vector2(0, 50);
+
+                    // LayoutElement gives VLG the explicit height to assign to this child
+                    LayoutElement labelLe = labelRt.GetComponent<LayoutElement>();
+                    if (labelLe == null) labelLe = labelRt.gameObject.AddComponent<LayoutElement>();
+                    labelLe.preferredHeight = 50f;
+                    labelLe.minHeight = 50f;
+                    labelLe.flexibleHeight = 0f;
+                    // Label text width hint (VLG ignores preferredWidth when childControlWidth=true)
+                    labelLe.preferredWidth = 180f;
+                    labelLe.minWidth = 180f;
                 }
 
-                FixChildAnchor(itemGO, "Label",  height: 50);
-                FixChildAnchor(itemGO, "Slider", height: 31);
+                if (itemGO.transform.Find("Slider") is Transform sliderTf
+                    && sliderTf.GetComponent<RectTransform>() is RectTransform sliderRt)
+                {
+                    sliderRt.anchorMin = new Vector2(0f, 1f);
+                    sliderRt.anchorMax = new Vector2(1f, 1f);
+                    sliderRt.pivot = new Vector2(0.5f, 1f);
+                    sliderRt.anchoredPosition = new Vector2(0f, 0f);
+                    sliderRt.sizeDelta = new Vector2(0, 31);
 
-                LayoutElement layoutEl = itemGO.GetComponent<LayoutElement>();
-                if (layoutEl == null)
-                    layoutEl = itemGO.AddComponent<LayoutElement>();
-                layoutEl.minHeight = 85f;
-                layoutEl.preferredHeight = 85f;
-                layoutEl.flexibleHeight = 0f;
+                    LayoutElement sliderLe = sliderRt.GetComponent<LayoutElement>();
+                    if (sliderLe == null) sliderLe = sliderRt.gameObject.AddComponent<LayoutElement>();
+                    sliderLe.preferredHeight = 31f;
+                    sliderLe.minHeight = 31f;
+                    sliderLe.flexibleHeight = 0f;
+                    sliderLe.preferredWidth = -1f; // fill remaining width (expand)
+                    sliderLe.minWidth = 0f;
+                }
 
                 TMP_Text label = null;
                 Slider slider = null;
@@ -507,21 +572,6 @@ namespace Diploma.UI
                   $"Parameters: {string.Join(", ", parameterSliders.Keys)}");
         }
 
-
-        private void FixChildAnchor(GameObject parent, string childName, float height)
-        {
-            if (parent == null) return;
-            Transform childTf = parent.transform.Find(childName);
-            if (childTf == null)
-                return;
-            RectTransform childRt = childTf.GetComponent<RectTransform>();
-            if (childRt == null) return;
-            childRt.anchorMin = new Vector2(0f, 1f);
-            childRt.anchorMax = new Vector2(1f, 1f);
-            childRt.pivot = new Vector2(0.5f, 1f);
-            childRt.anchoredPosition = new Vector2(0f, 0f);
-            childRt.sizeDelta = new Vector2(0f, height);
-        }
         private void OnParameterChanged(string fieldName, float newValue)
         {
             if (config == null) return;
