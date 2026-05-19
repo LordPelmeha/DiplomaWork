@@ -16,8 +16,8 @@ MonoBehaviour:
   mapSizeY: 150
   districtCount: 10
   extraEdges: 5
-  roadRadius: 0
-  minBuildingGap: 5
+  roadRadius: 1
+  minBuildingGap: 6
   minBuildingDistance: 14
   buildingPrefabIds: d0070000d1070000d2070000
   buildingPrefabWeights: 01000000
@@ -30,11 +30,11 @@ MonoBehaviour:
   biomeDirtThreshold: 0.3
   biomeFlowerThreshold: 0.4
   biomeSandThreshold: 0.75
-  districtMargin: 0
+  districtMargin: 5
   districtMinDistance: 10
   districtGridStep: 15
   maxNodeDegree: 4
-  decorationMinDistanceFromRoad: 5
+  decorationMinDistanceFromRoad: 2
   decorationMaxDistanceFromRoad: 0
   treePrefabIds: e8030000e9030000ea030000
   treePrefabWeights: 010000000100000001000000
@@ -45,4 +45,4 @@ MonoBehaviour:
   lampInterval: 10
   minRoadSegmentLength: 5
   benchPrefabId: 1004
-  minBenchDistance: 1
+  minBenchDistance: 2

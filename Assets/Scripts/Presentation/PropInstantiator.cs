@@ -168,7 +168,7 @@ namespace Diploma.Presentation
             }
             else if (hasVerticalRoad && !hasHorizontalRoad)
             {
-                return Quaternion.Euler(-20f, 50f, 20f);
+                return Quaternion.Euler(-20f, 50f, -20f);
             }
             else
             {

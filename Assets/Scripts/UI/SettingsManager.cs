@@ -67,6 +67,8 @@ namespace Diploma.UI
         public float labelHeight = 35f;
         [Tooltip("Высота слайдера в пикселях")]
         public float sliderHeight = 32f;
+        [Tooltip("Ширина слайдера в пикселях (0 = автоматически, оставшееся пространство по горизонтали)")]
+        public float sliderWidth = 0f;
         [Tooltip("Отступ между лейблом и слайдером в пикселях (внутри элемента)")]
         public float itemSpacing = 4f;
         [Tooltip("Отступ между соседними элементами настроек (item ↔ item)")]
@@ -84,6 +86,7 @@ namespace Diploma.UI
         private Dictionary<string, ParameterSetting> parameterSettingsByName = new Dictionary<string, ParameterSetting>();
         private bool isPanelOpen = false;
         private bool parameterSettingsBuilt = false;
+        private float xContentWidth = 0f; // ширина контента в пикселях (вычисляется из Viewport при открытии настроек)
 
         private const string SETTINGS_PREFIX = "WorldGenConfig_";
         private const string PARAM_SETTINGS_KEY = "SettingsManager_ParameterSettings";
@@ -495,6 +498,22 @@ namespace Diploma.UI
                 parameterSliders.Clear();
                 parameterLabels.Clear();
 
+                // Compute content width from ScrollRect viewport so items are left-aligned
+                xContentWidth = 0f;
+                ScrollRect srForWidth = settingsPanel != null
+                    ? settingsPanel.GetComponentInChildren<ScrollRect>(true)
+                    : null;
+                if (srForWidth != null && srForWidth.viewport != null)
+                {
+                    RectTransform vpRt = srForWidth.viewport.GetComponent<RectTransform>();
+                    xContentWidth = vpRt.rect.width - labelLeftPadding; // reserve left offset
+                    Debug.Log($"[SettingsManager] Viewport width={vpRt.rect.width:F1}, xContentWidth={xContentWidth:F1}");
+                }
+                else
+                {
+                    xContentWidth = 300f;
+                }
+
                 CreateSettingItems();
 
                 // Force settingsContent VLG to recompute children
@@ -674,10 +693,12 @@ namespace Diploma.UI
                 RectTransform rootRt = itemGO.GetComponent<RectTransform>();
                 if (rootRt != null)
                 {
-                    rootRt.anchorMin = new Vector2(0, 0);
-                    rootRt.anchorMax = new Vector2(1, 0);
-                    rootRt.pivot = new Vector2(0.5f, 1f);
-                    rootRt.anchoredPosition = Vector2.zero;
+                    // Anchors set to TOP-LEFT of parent: item does NOT stretch to the right,
+                    // its X depends on anchoredPosition (left edge). No bottom anchor — height driven by LayoutElement.
+                    rootRt.anchorMin = new Vector2(0, 1);
+                    rootRt.anchorMax = new Vector2(0, 1);
+                    rootRt.pivot = new Vector2(0f, 1f);
+                    rootRt.anchoredPosition = new Vector2(0f, 0f);
                 }
 
                 LayoutElement rootLe = itemGO.GetComponent<LayoutElement>();
@@ -686,7 +707,9 @@ namespace Diploma.UI
                 rootLe.preferredHeight = totalH;
                 rootLe.minHeight = totalH;
                 rootLe.flexibleHeight = 0f;
-                rootLe.preferredWidth = -1f;
+                // Width = Viewport width minus label padding (computed once in OpenSettings fallback)
+                // OpenSettings sets xContentWidth and applies it here; fallback = 300f
+                rootLe.preferredWidth = xContentWidth > 0f ? xContentWidth : 300f;
                 rootLe.minWidth = 0f;
 
                 VerticalLayoutGroup vlg = itemGO.GetComponent<VerticalLayoutGroup>();
@@ -731,7 +754,18 @@ namespace Diploma.UI
                     sliderLe.preferredHeight = sliderHeight;
                     sliderLe.minHeight = sliderHeight;
                     sliderLe.flexibleHeight = 0f;
-                    sliderLe.flexibleWidth = 1f;
+                    if (sliderWidth > 0f)
+                    {
+                        sliderLe.preferredWidth = sliderWidth;
+                        sliderLe.flexibleWidth = 0f;
+                        sliderRt.anchorMin = new Vector2(0f, 0f);
+                        sliderRt.anchorMax = new Vector2(0f, 0f);  // fixed width, left-anchored
+                        sliderRt.anchoredPosition = new Vector2(labelWidth + itemSpacing, 0f);
+                    }
+                    else
+                    {
+                        sliderLe.flexibleWidth = 1f;  // fill remaining space
+                    }
                 }
 
                 TMP_Text label = null;
