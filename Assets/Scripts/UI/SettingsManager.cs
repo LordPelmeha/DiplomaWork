@@ -129,16 +129,27 @@ namespace Diploma.UI
 
         private const string SETTINGS_PREFIX = "WorldGenConfig_";
         private const string PARAM_SETTINGS_KEY = "SettingsManager_ParameterSettings";
-        private const string DEFAULTS_JSON_PATH = "Assets/StreamingAssets/WorldGenConfig_defaults.json";
+        private const string DEFAULTS_JSON_FILENAME = "WorldGenConfig_defaults.json";
 
         private void Awake()
         {
             if (settingsPanel != null)
                 settingsPanel.SetActive(false);
 
-            LoadDefaultsFromJson();
             LoadParameterSettings();
             BuildParameterSettingsList();
+
+            // Диагностика: пишем в лог путь к JSON и факт его наличия
+            string jsonPath = GetDefaultsJsonPath();
+            if (System.IO.File.Exists(jsonPath))
+            {
+                Debug.Log($"[SettingsManager] Defaults JSON found at: {jsonPath}");
+            }
+            else
+            {
+                Debug.LogWarning($"[SettingsManager] Defaults JSON NOT found at: {jsonPath}. " +
+                    "Use SaveDefaultsToJson() to create it from current config values.");
+            }
         }
 
         private void Start()
@@ -372,20 +383,30 @@ namespace Diploma.UI
             try
             {
                 // Ensure the StreamingAssets directory exists
-                string dir = Path.GetDirectoryName(DEFAULTS_JSON_PATH);
+                string dir = Path.GetDirectoryName(GetDefaultsJsonPath());
                 if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir))
                 {
                     Directory.CreateDirectory(dir);
                 }
 
                 string json = JsonUtility.ToJson(defaults, prettyPrint: true);
-                File.WriteAllText(DEFAULTS_JSON_PATH, json);
-                Debug.Log($"[SettingsManager] Defaults saved to {DEFAULTS_JSON_PATH}");
+                File.WriteAllText(GetDefaultsJsonPath(), json);
+                Debug.Log($"[SettingsManager] Defaults saved to {GetDefaultsJsonPath()}");
             }
             catch (Exception e)
             {
                 Debug.LogError($"[SettingsManager] Failed to save defaults JSON: {e.Message}");
             }
+        }
+
+        /// <summary>
+        /// Returns the full path to the defaults JSON file.
+        /// In the editor uses the project folder directly.
+        /// In a build uses Application.streamingAssetsPath.
+        /// </summary>
+        private string GetDefaultsJsonPath()
+        {
+            return System.IO.Path.Combine(UnityEngine.Application.streamingAssetsPath, DEFAULTS_JSON_FILENAME);
         }
 
         /// <summary>
@@ -396,15 +417,15 @@ namespace Diploma.UI
         {
             if (config == null) return;
 
-            if (!File.Exists(DEFAULTS_JSON_PATH))
+            if (!File.Exists(GetDefaultsJsonPath()))
             {
-                Debug.LogWarning($"[SettingsManager] Defaults JSON not found at {DEFAULTS_JSON_PATH}. Config defaults will be the inspector values.");
+                Debug.LogWarning($"[SettingsManager] Defaults JSON not found at {GetDefaultsJsonPath()}. Config defaults will be the inspector values.");
                 return;
             }
 
             try
             {
-                string json = File.ReadAllText(DEFAULTS_JSON_PATH);
+                string json = File.ReadAllText(GetDefaultsJsonPath());
                 var defaults = JsonUtility.FromJson<WorldGenConfigDefaults>(json);
                 if (defaults == null)
                 {
@@ -1059,7 +1080,7 @@ namespace Diploma.UI
         {
             if (config == null) return;
 
-            if (!File.Exists(DEFAULTS_JSON_PATH))
+            if (!File.Exists(GetDefaultsJsonPath()))
             {
                 Debug.LogWarning("[SettingsManager] No defaults JSON found. Cannot reset.");
             }
