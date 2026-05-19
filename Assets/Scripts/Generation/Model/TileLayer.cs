@@ -52,5 +52,12 @@ namespace Diploma.Generation.Model
         }
 
         public TileType[] GetRawCells() => _cells;
+
+        public bool HasRoads()
+        {
+            foreach (var cell in _cells)
+                if (cell == TileType.Road) return true;
+            return false;
+        }
     }
 }

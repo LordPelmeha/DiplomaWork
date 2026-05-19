@@ -3,14 +3,54 @@ using UnityEngine.UI;
 using TMPro;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using Diploma.Generation;
+#if UNITY_EDITOR
+using UnityEditor;
+#endif
 
 namespace Diploma.UI
 {
     /// <summary>
+    /// Только числовые параметры WorldGenConfig, сериализуемые в JSON.
+    /// Массивы, комбинированные типы и служебные поля не включаются.
+    /// </summary>
+    [Serializable]
+    public class WorldGenConfigDefaults
+    {
+        public int mapSizeX;
+        public int mapSizeY;
+        public int districtCount;
+        public int extraEdges;
+        public int roadRadius;
+        public int minBuildingGap;
+        public int minBuildingDistance;
+        public int terrainSmoothChance;
+        public float biomeScale;
+        public int biomeOctaves;
+        public float biomePersistence;
+        public float biomeLacunarity;
+        public float biomeStoneThreshold;
+        public float biomeDirtThreshold;
+        public float biomeFlowerThreshold;
+        public float biomeSandThreshold;
+        public int districtMargin;
+        public int districtMinDistance;
+        public int districtGridStep;
+        public int maxNodeDegree;
+        public int decorationMinDistanceFromRoad;
+        public int decorationMaxDistanceFromRoad;
+        public int treeSpawnChance;
+        public int maxTreeCount;
+        public int lampInterval;
+        public int minRoadSegmentLength;
+        public int benchPrefabId;
+        public int minBenchDistance;
+    }
+
+    /// <summary>
     /// Per-parameter setting for WorldGenConfig fields.
-    /// Stored in the inspector list — each entry controls how one config field appears in the settings panel.
     /// </summary>
     [Serializable]
     public class ParameterSetting
@@ -82,21 +122,21 @@ namespace Diploma.UI
 
         private Dictionary<string, Slider> parameterSliders = new Dictionary<string, Slider>();
         private Dictionary<string, TMP_Text> parameterLabels = new Dictionary<string, TMP_Text>();
-        private Dictionary<string, object> defaultValues = new Dictionary<string, object>();
         private Dictionary<string, ParameterSetting> parameterSettingsByName = new Dictionary<string, ParameterSetting>();
         private bool isPanelOpen = false;
         private bool parameterSettingsBuilt = false;
-        private float xContentWidth = 0f; // ширина контента в пикселях (вычисляется из Viewport при открытии настроек)
+        private float xContentWidth = 0f;
 
         private const string SETTINGS_PREFIX = "WorldGenConfig_";
         private const string PARAM_SETTINGS_KEY = "SettingsManager_ParameterSettings";
+        private const string DEFAULTS_JSON_PATH = "Assets/StreamingAssets/WorldGenConfig_defaults.json";
 
         private void Awake()
         {
             if (settingsPanel != null)
                 settingsPanel.SetActive(false);
 
-            CacheDefaultValues();
+            LoadDefaultsFromJson();
             LoadParameterSettings();
             BuildParameterSettingsList();
         }
@@ -279,17 +319,138 @@ namespace Diploma.UI
             return ps != null && ps.enabled;
         }
 
-        private void CacheDefaultValues()
+        // =====================================================================
+        // Defaults JSON — baseline values for Reset
+        // =====================================================================
+
+        /// <summary>
+        /// Записывает текущие числовые значения WorldGenConfig в JSON-файл как новый базалайн.
+        /// </summary>
+#if UNITY_EDITOR
+        [ContextMenu("Save as Defaults JSON")]
+#endif
+        public void SaveDefaultsToJson()
+        {
+            if (config == null)
+            {
+                Debug.LogWarning("[SettingsManager] Config is null, cannot save defaults.");
+                return;
+            }
+
+            var defaults = new WorldGenConfigDefaults
+            {
+                mapSizeX = config.mapSizeX,
+                mapSizeY = config.mapSizeY,
+                districtCount = config.districtCount,
+                extraEdges = config.extraEdges,
+                roadRadius = config.roadRadius,
+                minBuildingGap = config.minBuildingGap,
+                minBuildingDistance = config.minBuildingDistance,
+                terrainSmoothChance = config.terrainSmoothChance,
+                biomeScale = config.biomeScale,
+                biomeOctaves = config.biomeOctaves,
+                biomePersistence = config.biomePersistence,
+                biomeLacunarity = config.biomeLacunarity,
+                biomeStoneThreshold = config.biomeStoneThreshold,
+                biomeDirtThreshold = config.biomeDirtThreshold,
+                biomeFlowerThreshold = config.biomeFlowerThreshold,
+                biomeSandThreshold = config.biomeSandThreshold,
+                districtMargin = config.districtMargin,
+                districtMinDistance = config.districtMinDistance,
+                districtGridStep = config.districtGridStep,
+                maxNodeDegree = config.maxNodeDegree,
+                decorationMinDistanceFromRoad = config.decorationMinDistanceFromRoad,
+                decorationMaxDistanceFromRoad = config.decorationMaxDistanceFromRoad,
+                treeSpawnChance = config.treeSpawnChance,
+                maxTreeCount = config.maxTreeCount,
+                lampInterval = config.lampInterval,
+                minRoadSegmentLength = config.minRoadSegmentLength,
+                benchPrefabId = config.benchPrefabId,
+                minBenchDistance = config.minBenchDistance
+            };
+
+            try
+            {
+                // Ensure the StreamingAssets directory exists
+                string dir = Path.GetDirectoryName(DEFAULTS_JSON_PATH);
+                if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir))
+                {
+                    Directory.CreateDirectory(dir);
+                }
+
+                string json = JsonUtility.ToJson(defaults, prettyPrint: true);
+                File.WriteAllText(DEFAULTS_JSON_PATH, json);
+                Debug.Log($"[SettingsManager] Defaults saved to {DEFAULTS_JSON_PATH}");
+            }
+            catch (Exception e)
+            {
+                Debug.LogError($"[SettingsManager] Failed to save defaults JSON: {e.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Загружает дефолтные значения из JSON-файла и применяет их к WorldGenConfig.
+        /// Если файл не существует — ничего не делает, оставляя текущие значения конфига.
+        /// </summary>
+        private void LoadDefaultsFromJson()
         {
             if (config == null) return;
 
-            defaultValues.Clear();
-            var fields = config.GetType().GetFields(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance);
-            foreach (var field in fields)
+            if (!File.Exists(DEFAULTS_JSON_PATH))
             {
-                if (field.IsInitOnly) continue;
-                defaultValues[field.Name] = field.GetValue(config);
+                Debug.LogWarning($"[SettingsManager] Defaults JSON not found at {DEFAULTS_JSON_PATH}. Config defaults will be the inspector values.");
+                return;
             }
+
+            try
+            {
+                string json = File.ReadAllText(DEFAULTS_JSON_PATH);
+                var defaults = JsonUtility.FromJson<WorldGenConfigDefaults>(json);
+                if (defaults == null)
+                {
+                    Debug.LogWarning("[SettingsManager] Failed to parse defaults JSON.");
+                    return;
+                }
+
+                ApplyDefaultsToConfig(defaults);
+                Debug.Log("[SettingsManager] Defaults loaded from JSON and applied.");
+            }
+            catch (Exception e)
+            {
+                Debug.LogWarning($"[SettingsManager] Failed to load defaults JSON: {e.Message}");
+            }
+        }
+
+        private void ApplyDefaultsToConfig(WorldGenConfigDefaults d)
+        {
+            config.mapSizeX = d.mapSizeX;
+            config.mapSizeY = d.mapSizeY;
+            config.districtCount = d.districtCount;
+            config.extraEdges = d.extraEdges;
+            config.roadRadius = d.roadRadius;
+            config.minBuildingGap = d.minBuildingGap;
+            config.minBuildingDistance = d.minBuildingDistance;
+            config.terrainSmoothChance = d.terrainSmoothChance;
+            config.biomeScale = d.biomeScale;
+            config.biomeOctaves = d.biomeOctaves;
+            config.biomePersistence = d.biomePersistence;
+            config.biomeLacunarity = d.biomeLacunarity;
+            config.biomeStoneThreshold = d.biomeStoneThreshold;
+            config.biomeDirtThreshold = d.biomeDirtThreshold;
+            config.biomeFlowerThreshold = d.biomeFlowerThreshold;
+            config.biomeSandThreshold = d.biomeSandThreshold;
+            config.districtMargin = d.districtMargin;
+            config.districtMinDistance = d.districtMinDistance;
+            config.districtGridStep = d.districtGridStep;
+            config.maxNodeDegree = d.maxNodeDegree;
+            config.decorationMinDistanceFromRoad = d.decorationMinDistanceFromRoad;
+            config.decorationMaxDistanceFromRoad = d.decorationMaxDistanceFromRoad;
+            config.treeSpawnChance = d.treeSpawnChance;
+            config.maxTreeCount = d.maxTreeCount;
+            config.lampInterval = d.lampInterval;
+            config.minRoadSegmentLength = d.minRoadSegmentLength;
+            config.benchPrefabId = d.benchPrefabId;
+            config.minBenchDistance = d.minBenchDistance;
         }
 
         // =====================================================================
@@ -896,15 +1057,33 @@ namespace Diploma.UI
 
         public void ResetToDefaults()
         {
-            if (config == null || defaultValues.Count == 0) return;
+            if (config == null) return;
 
-            var fields = config.GetType().GetFields(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance);
-            foreach (var field in fields)
+            if (!File.Exists(DEFAULTS_JSON_PATH))
             {
-                if (field.IsInitOnly) continue;
-                if (defaultValues.TryGetValue(field.Name, out object defaultValue))
+                Debug.LogWarning("[SettingsManager] No defaults JSON found. Cannot reset.");
+            }
+            else
+            {
+                LoadDefaultsFromJson();
+
+                // Удаляем сохранённые в PlayerPrefs значения, чтобы они не перезаписали загруженные из JSON дефолты
+                if (config != null)
                 {
-                    field.SetValue(config, defaultValue);
+                    var fields = config.GetType().GetFields(
+                        System.Reflection.BindingFlags.Public |
+                        System.Reflection.BindingFlags.Instance);
+                    foreach (var field in fields)
+                    {
+                        if (field.IsInitOnly) continue;
+                        string key = SETTINGS_PREFIX + field.Name;
+                        if (PlayerPrefs.HasKey(key))
+                        {
+                            PlayerPrefs.DeleteKey(key);
+                        }
+                    }
+                    PlayerPrefs.Save();
+                    Debug.Log("[SettingsManager] PlayerPrefs cleared for config fields.");
                 }
             }
 

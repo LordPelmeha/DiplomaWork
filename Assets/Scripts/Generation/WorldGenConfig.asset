@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 6f48f5738798d8e448bf6ea876e56e7f, type: 3}
   m_Name: WorldGenConfig
   m_EditorClassIdentifier: Assembly-CSharp::Diploma.Generation.WorldGenConfig
-  mapSizeX: 150
+  mapSizeX: 477
   mapSizeY: 150
   districtCount: 10
   extraEdges: 5

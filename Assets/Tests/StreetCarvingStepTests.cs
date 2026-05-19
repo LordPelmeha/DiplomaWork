@@ -1,4 +1,5 @@
 ﻿using NUnit.Framework;
+using System;
 using UnityEngine;
 using Diploma.Core;
 using Diploma.Generation;
@@ -140,6 +141,43 @@ public class StreetCarvingStepTests
     }
 
     [Test]
+    [TestCase(1, 2, 3)]
+    public void Execute_RoadRadius_ParameterSweep(int r1, int r2, int r3)
+    {
+        // r1 < r2 < r3: each successive radius must produce more (or equal) road cells
+        var results = new int[3];
+        int[] radii = { r1, r2, r3 };
+
+        for (int i = 0; i < 3; i++)
+        {
+            var cfg = ScriptableObject.CreateInstance<WorldGenConfig>();
+            cfg.MapSize = new Vector2Int(32, 32);
+            cfg.districtCount = 4;
+            cfg.roadRadius = radii[i];
+
+            var world = new WorldData(cfg.MapSize);
+            var seed = new SeedContext(12345);
+
+            var graphStep = new DistrictGraphStep();
+            graphStep.Execute(cfg, seed, world);
+
+            var carveStep = new StreetCarvingStep();
+            carveStep.Execute(cfg, seed, world);
+
+            int count = 0;
+            foreach (var cell in world.Roads.GetRawCells())
+                if (cell == TileType.Road) count++;
+
+            results[i] = count;
+        }
+
+        Assert.LessOrEqual(results[0], results[1],
+            $"roadRadius={r1} should not produce more road cells than radius={r2}");
+        Assert.LessOrEqual(results[1], results[2],
+            $"roadRadius={r2} should not produce more road cells than radius={r3}");
+    }
+
+    [Test]
     public void Execute_RoadsStayWithinBounds()
     {
         var cfg = ScriptableObject.CreateInstance<WorldGenConfig>();
@@ -171,7 +209,7 @@ public class StreetCarvingStepTests
         var seed = new SeedContext(12345);
         var step = new StreetCarvingStep();
 
-        Assert.Throws<System.NullReferenceException>(() => {
+        Assert.Throws<ArgumentNullException>(() => {
             step.Execute(cfg, seed, null);
         });
     }
@@ -183,7 +221,7 @@ public class StreetCarvingStepTests
         var seed = new SeedContext(12345);
         var step = new StreetCarvingStep();
 
-        Assert.Throws<System.NullReferenceException>(() => {
+        Assert.Throws<ArgumentNullException>(() => {
             step.Execute(null, seed, world);
         });
     }
@@ -195,7 +233,7 @@ public class StreetCarvingStepTests
         var world = new WorldData(new Vector2Int(64, 64));
         var step = new StreetCarvingStep();
 
-        Assert.Throws<System.NullReferenceException>(() => {
+        Assert.Throws<ArgumentNullException>(() => {
             step.Execute(cfg, null, world);
         });
     }

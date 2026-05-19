@@ -108,8 +108,8 @@ public class WorldHashTests
             .Add(new DistrictGraphStep())
             .Add(new StreetCarvingStep());
 
-        uint[] hashes = new uint[5];
-        for (int i = 0; i < 5; i++)
+        uint[] hashes = new uint[10];
+        for (int i = 0; i < 10; i++)
         {
             var world = WorldGeneratorService.Generate(77777, cfg, pipeline);
             hashes[i] = world.Meta.WorldHash;

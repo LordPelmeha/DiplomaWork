@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using Diploma.Core;
@@ -18,6 +19,10 @@ namespace Diploma.Generation.Steps
 
         public void Execute(WorldGenConfig config, SeedContext seed, WorldData world)
         {
+            if (config == null) throw new ArgumentNullException(nameof(config));
+            if (seed == null) throw new ArgumentNullException(nameof(seed));
+            if (world == null) throw new ArgumentNullException(nameof(world));
+
             var rng = seed.CreateRng(Key);
             var validationResult = WorldValidator.Validate(world);
 
@@ -147,6 +152,14 @@ namespace Diploma.Generation.Steps
                         if (dist < bestDist)
                         {
                             bestDist = dist;
+                            bestConnected = cIdx;
+                            bestUnconnected = uIdx;
+                            bestFrom = from;
+                            bestTo = to;
+                        }
+                        else if (dist == bestDist && rng.Next(0, 2) == 0)
+                        {
+                            // Tie-break with RNG so different seeds can pick different pairs
                             bestConnected = cIdx;
                             bestUnconnected = uIdx;
                             bestFrom = from;

@@ -1,4 +1,5 @@
 ﻿using NUnit.Framework;
+using System;
 using UnityEngine;
 using Diploma.Core;
 using Diploma.Generation;
@@ -205,7 +206,7 @@ public class DistrictGraphStepTests
         var seed = new SeedContext(12345);
         var step = new DistrictGraphStep();
 
-        Assert.Throws<System.NullReferenceException>(() => {
+        Assert.Throws<ArgumentNullException>(() => {
             step.Execute(cfg, seed, null);
         });
     }
@@ -217,7 +218,7 @@ public class DistrictGraphStepTests
         var seed = new SeedContext(12345);
         var step = new DistrictGraphStep();
 
-        Assert.Throws<System.NullReferenceException>(() => {
+        Assert.Throws<ArgumentNullException>(() => {
             step.Execute(null, seed, world);
         });
     }
@@ -229,7 +230,7 @@ public class DistrictGraphStepTests
         var world = new WorldData(new Vector2Int(64, 64));
         var step = new DistrictGraphStep();
 
-        Assert.Throws<System.NullReferenceException>(() => {
+        Assert.Throws<ArgumentNullException>(() => {
             step.Execute(cfg, null, world);
         });
     }

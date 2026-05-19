@@ -1,8 +1,10 @@
 ﻿using NUnit.Framework;
+using System;
 using UnityEngine;
 using Diploma.Generation;
 using Diploma.Generation.Pipeline;
 using Diploma.Generation.Steps;
+using Diploma.Generation.Model;
 
 public class BuildingLayoutTests
 {
@@ -128,6 +130,75 @@ public class BuildingLayoutTests
                     Assert.AreNotEqual(world.Roads.Get(x, y), Diploma.Generation.Model.TileType.Road,
                         $"Building {building.id} overlaps with road at ({x}, {y})");
                 }
+            }
+        }
+    }
+
+    [Test]
+    public void BuildingLayout_MinBuildingGap_Respected()
+    {
+        var cfg = ScriptableObject.CreateInstance<WorldGenConfig>();
+        cfg.MapSize = new Vector2Int(64, 64);
+        cfg.districtCount = 8;
+        cfg.minBuildingGap = 3;
+
+        var pipeline = new WorldGenPipeline()
+            .Add(new BaseFillStep())
+            .Add(new DistrictGraphStep())
+            .Add(new StreetCarvingStep())
+            .Add(new BuildingLayoutStep());
+
+        var world = WorldGeneratorService.Generate(12345, cfg, pipeline);
+
+        foreach (var building in world.Buildings)
+        {
+            // Проверяем, что здание не перекрывает дороги
+            for (int x = building.position.x; x < building.position.x + building.width; x++)
+            {
+                for (int y = building.position.y; y < building.position.y + building.height; y++)
+                {
+                    Assert.AreNotEqual(world.Roads.Get(x, y), TileType.Road,
+                        $"Building {building.id} at ({x},{y}) should be at least minBuildingGap={cfg.minBuildingGap} cells away from roads");
+                }
+            }
+        }
+    }
+
+    [Test]
+    public void BuildingLayout_MinBuildingDistance_BuildingsDoNotOverlap()
+    {
+        var cfg = ScriptableObject.CreateInstance<WorldGenConfig>();
+        cfg.MapSize = new Vector2Int(64, 64);
+        cfg.districtCount = 8;
+        cfg.minBuildingDistance = 2;
+
+        var pipeline = new WorldGenPipeline()
+            .Add(new BaseFillStep())
+            .Add(new DistrictGraphStep())
+            .Add(new StreetCarvingStep())
+            .Add(new BuildingLayoutStep());
+
+        var world = WorldGeneratorService.Generate(12345, cfg, pipeline);
+
+        for (int i = 0; i < world.Buildings.Count; i++)
+        {
+            for (int j = i + 1; j < world.Buildings.Count; j++)
+            {
+                var b1 = world.Buildings[i];
+                var b2 = world.Buildings[j];
+
+                var rect1 = new RectInt(b1.position.x, b1.position.y, b1.width, b1.height);
+                var rect2 = new RectInt(b2.position.x, b2.position.y, b2.width, b2.height);
+
+                var expanded1 = new RectInt(
+                    rect1.xMin - cfg.minBuildingDistance,
+                    rect1.yMin - cfg.minBuildingDistance,
+                    rect1.width + 2 * cfg.minBuildingDistance,
+                    rect1.height + 2 * cfg.minBuildingDistance);
+
+                Assert.IsFalse(expanded1.Overlaps(rect2),
+                    $"Buildings {i} and {j} should be at least minBuildingDistance={cfg.minBuildingDistance} cells apart. " +
+                    $"Expanded rect of building {i}: {expanded1}, building {j}: {rect2}");
             }
         }
     }

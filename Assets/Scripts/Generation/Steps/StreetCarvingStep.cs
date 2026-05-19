@@ -12,6 +12,10 @@ namespace Diploma.Generation.Steps
 
         public void Execute(WorldGenConfig config, SeedContext seed, WorldData world)
         {
+            if (config == null) throw new ArgumentNullException(nameof(config));
+            if (seed == null) throw new ArgumentNullException(nameof(seed));
+            if (world == null) throw new ArgumentNullException(nameof(world));
+
             var rng = seed.CreateRng(Key);
 
             if (world.Graph == null)

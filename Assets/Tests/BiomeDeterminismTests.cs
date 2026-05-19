@@ -101,7 +101,7 @@ public class BiomeDeterminismTests
         }
 
         float grassPercentage = (float)grassCount / ground.Length * 100f;
-        Assert.GreaterOrEqual(grassPercentage, 30f, 
+        Assert.GreaterOrEqual(grassPercentage, 30f,
             $"Grass should cover at least 30% of the map, but only {grassPercentage:F1}%");
     }
 

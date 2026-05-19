@@ -17,6 +17,10 @@ namespace Diploma.Generation.Steps
 
         public void Execute(WorldGenConfig config, SeedContext seed, WorldData world)
         {
+            if (config == null) throw new ArgumentNullException(nameof(config));
+            if (seed == null) throw new ArgumentNullException(nameof(seed));
+            if (world == null) throw new ArgumentNullException(nameof(world));
+
             var rng = seed.CreateRng(Key);
 
             if (world.Roads == null)
@@ -24,6 +28,9 @@ namespace Diploma.Generation.Steps
 
             if (world.Ground == null)
                 throw new InvalidOperationException("DecorationPlanStep: world.Ground is null.");
+
+            if (!world.Roads.HasRoads())
+                throw new InvalidOperationException("DecorationPlanStep: world has no roads.");
 
             var roads = world.Roads;
             var ground = world.Ground;
