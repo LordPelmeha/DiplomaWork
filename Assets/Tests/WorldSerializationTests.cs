@@ -11,7 +11,7 @@ public class WorldSerializationTests
     public void Serialize_Deserialize_ProducesSameWorldHash()
     {
         var cfg = ScriptableObject.CreateInstance<WorldGenConfig>();
-        cfg.mapSize = new Vector2Int(64, 64);
+        cfg.MapSize = new Vector2Int(64, 64);
         cfg.districtCount = 8;
         cfg.extraEdges = 3;
 
@@ -33,7 +33,7 @@ public class WorldSerializationTests
     public void Serialize_Deserialize_ProducesSameGraph()
     {
         var cfg = ScriptableObject.CreateInstance<WorldGenConfig>();
-        cfg.mapSize = new Vector2Int(64, 64);
+        cfg.MapSize = new Vector2Int(64, 64);
         cfg.districtCount = 8;
 
         var pipeline = new WorldGenPipeline()
@@ -57,7 +57,7 @@ public class WorldSerializationTests
     public void Serialize_Deserialize_ProducesSameBuildings()
     {
         var cfg = ScriptableObject.CreateInstance<WorldGenConfig>();
-        cfg.mapSize = new Vector2Int(64, 64);
+        cfg.MapSize = new Vector2Int(64, 64);
         cfg.districtCount = 8;
 
         var pipeline = new WorldGenPipeline()
@@ -89,7 +89,7 @@ public class WorldSerializationTests
     public void Serialize_Deserialize_ProducesSameTileLayers()
     {
         var cfg = ScriptableObject.CreateInstance<WorldGenConfig>();
-        cfg.mapSize = new Vector2Int(32, 32);
+        cfg.MapSize = new Vector2Int(32, 32);
 
         var pipeline = new WorldGenPipeline()
             .Add(new BaseFillStep())
@@ -114,7 +114,7 @@ public class WorldSerializationTests
     public void SaveToFile_LoadFromFile_ProducesSameWorld()
     {
         var cfg = ScriptableObject.CreateInstance<WorldGenConfig>();
-        cfg.mapSize = new Vector2Int(32, 32);
+        cfg.MapSize = new Vector2Int(32, 32);
         cfg.districtCount = 4;
 
         var pipeline = new WorldGenPipeline()
@@ -139,7 +139,7 @@ public class WorldSerializationTests
     public void Serialize_Deserialize_NullGraph_HandlesCorrectly()
     {
         var cfg = ScriptableObject.CreateInstance<WorldGenConfig>();
-        cfg.mapSize = new Vector2Int(32, 32);
+        cfg.MapSize = new Vector2Int(32, 32);
 
         var pipeline = new WorldGenPipeline()
             .Add(new BaseFillStep());
@@ -185,7 +185,7 @@ public class WorldSerializationTests
     public void Serialize_Deserialize_WorldMeta_ProducesSameMeta()
     {
         var cfg = ScriptableObject.CreateInstance<WorldGenConfig>();
-        cfg.mapSize = new Vector2Int(32, 32);
+        cfg.MapSize = new Vector2Int(32, 32);
 
         var pipeline = new WorldGenPipeline()
             .Add(new BaseFillStep())

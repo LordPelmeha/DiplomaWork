@@ -13,7 +13,7 @@ public class WorldValidatorTests
     public void Validate_ValidWorld_ReturnsValidResult()
     {
         var cfg = ScriptableObject.CreateInstance<WorldGenConfig>();
-        cfg.mapSize = new Vector2Int(64, 64);
+        cfg.MapSize = new Vector2Int(64, 64);
         cfg.districtCount = 8;
         cfg.extraEdges = 3;
         cfg.districtMargin = 5;
@@ -44,7 +44,7 @@ public class WorldValidatorTests
     public void Validate_EmptyGraph_ReturnsInvalidResult()
     {
         var cfg = ScriptableObject.CreateInstance<WorldGenConfig>();
-        cfg.mapSize = new Vector2Int(32, 32);
+        cfg.MapSize = new Vector2Int(32, 32);
 
         var pipeline = new WorldGenPipeline()
             .Add(new BaseFillStep());
@@ -62,7 +62,7 @@ public class WorldValidatorTests
     {
 
         var cfg = ScriptableObject.CreateInstance<WorldGenConfig>();
-        cfg.mapSize = new Vector2Int(32, 32);
+        cfg.MapSize = new Vector2Int(32, 32);
         cfg.districtCount = 1;
 
         var pipeline = new WorldGenPipeline()
@@ -80,7 +80,7 @@ public class WorldValidatorTests
     public void Validate_SameSeed_AlwaysValid()
     {
         var cfg = ScriptableObject.CreateInstance<WorldGenConfig>();
-        cfg.mapSize = new Vector2Int(64, 64);
+        cfg.MapSize = new Vector2Int(64, 64);
         cfg.districtCount = 8;
         cfg.extraEdges = 3;
 

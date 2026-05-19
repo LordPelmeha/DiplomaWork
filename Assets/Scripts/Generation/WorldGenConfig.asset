@@ -12,26 +12,27 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 6f48f5738798d8e448bf6ea876e56e7f, type: 3}
   m_Name: WorldGenConfig
   m_EditorClassIdentifier: Assembly-CSharp::Diploma.Generation.WorldGenConfig
-  mapSize: {x: 150, y: 150}
-  districtCount: 8
-  extraEdges: 3
-  roadRadius: 1
-  minBuildingGap: 4
+  mapSizeX: 150
+  mapSizeY: 150
+  districtCount: 10
+  extraEdges: 5
+  roadRadius: 0
+  minBuildingGap: 5
   minBuildingDistance: 14
   buildingPrefabIds: d0070000d1070000d2070000
   buildingPrefabWeights: 01000000
   terrainSmoothChance: 30
-  biomeScale: 0.1
+  biomeScale: 0.182
   biomeOctaves: 4
-  biomePersistence: 0.5
+  biomePersistence: 1
   biomeLacunarity: 2
   biomeStoneThreshold: 0.2
   biomeDirtThreshold: 0.3
   biomeFlowerThreshold: 0.4
   biomeSandThreshold: 0.75
-  districtMargin: 8
+  districtMargin: 0
   districtMinDistance: 10
-  districtGridStep: 6
+  districtGridStep: 15
   maxNodeDegree: 4
   decorationMinDistanceFromRoad: 5
   decorationMaxDistanceFromRoad: 0

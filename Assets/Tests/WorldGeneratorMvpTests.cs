@@ -10,7 +10,7 @@ public class WorldGeneratorMvpTests
     public void Generate_SameSeed_ProducesSameGround()
     {
         var cfg = ScriptableObject.CreateInstance<WorldGenConfig>();
-        cfg.mapSize = new Vector2Int(16, 16);
+        cfg.MapSize = new Vector2Int(16, 16);
 
         var pipeline = new WorldGenPipeline().Add(new BaseFillStep());
 

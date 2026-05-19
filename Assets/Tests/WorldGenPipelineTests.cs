@@ -12,7 +12,7 @@ public class WorldGenPipelineTests
     public void Pipeline_EmptyPipeline_CreatesEmptyWorld()
     {
         var cfg = ScriptableObject.CreateInstance<WorldGenConfig>();
-        cfg.mapSize = new Vector2Int(32, 32);
+        cfg.MapSize = new Vector2Int(32, 32);
 
         var pipeline = new WorldGenPipeline();
         var world = WorldGeneratorService.Generate(12345, cfg, pipeline);
@@ -29,7 +29,7 @@ public class WorldGenPipelineTests
     public void Pipeline_SingleStep_ExecutesStep()
     {
         var cfg = ScriptableObject.CreateInstance<WorldGenConfig>();
-        cfg.mapSize = new Vector2Int(32, 32);
+        cfg.MapSize = new Vector2Int(32, 32);
 
         var pipeline = new WorldGenPipeline()
             .Add(new BaseFillStep());
@@ -47,7 +47,7 @@ public class WorldGenPipelineTests
     public void Pipeline_MultipleSteps_ExecuteInOrder()
     {
         var cfg = ScriptableObject.CreateInstance<WorldGenConfig>();
-        cfg.mapSize = new Vector2Int(32, 32);
+        cfg.MapSize = new Vector2Int(32, 32);
         cfg.districtCount = 4;
 
         var pipeline = new WorldGenPipeline()
@@ -139,7 +139,7 @@ public class WorldGenPipelineTests
     public void Pipeline_FullPipeline_ProducesValidWorld()
     {
         var cfg = ScriptableObject.CreateInstance<WorldGenConfig>();
-        cfg.mapSize = new Vector2Int(64, 64);
+        cfg.MapSize = new Vector2Int(64, 64);
         cfg.districtCount = 8;
         cfg.extraEdges = 3;
 

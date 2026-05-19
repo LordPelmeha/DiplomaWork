@@ -10,7 +10,7 @@ public class StreetsDeterminismTests
     public void Streets_SameSeed_ProducesSameRoadLayer()
     {
         var cfg = ScriptableObject.CreateInstance<WorldGenConfig>();
-        cfg.mapSize = new Vector2Int(80, 60);
+        cfg.MapSize = new Vector2Int(80, 60);
         cfg.districtCount = 12;
         cfg.extraEdges = 5;
         cfg.districtMargin = 4;

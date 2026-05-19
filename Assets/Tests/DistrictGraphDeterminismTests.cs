@@ -10,7 +10,7 @@ public class DistrictGraphDeterminismTests
     public void Graph_SameSeed_ProducesSameNodesAndEdges()
     {
         var cfg = ScriptableObject.CreateInstance<WorldGenConfig>();
-        cfg.mapSize = new Vector2Int(64, 64);
+        cfg.MapSize = new Vector2Int(64, 64);
         cfg.districtCount = 10;
         cfg.extraEdges = 4;
         cfg.districtMargin = 5;

@@ -11,7 +11,7 @@ public class WorldHashTests
     public void ComputeHash_SameSeed_ProducesSameHash()
     {
         var cfg = ScriptableObject.CreateInstance<WorldGenConfig>();
-        cfg.mapSize = new Vector2Int(64, 64);
+        cfg.MapSize = new Vector2Int(64, 64);
         cfg.districtCount = 8;
         cfg.extraEdges = 3;
         cfg.districtMargin = 5;
@@ -33,7 +33,7 @@ public class WorldHashTests
     public void ComputeHash_DifferentSeeds_ProducesDifferentHash()
     {
         var cfg = ScriptableObject.CreateInstance<WorldGenConfig>();
-        cfg.mapSize = new Vector2Int(64, 64);
+        cfg.MapSize = new Vector2Int(64, 64);
         cfg.districtCount = 8;
         cfg.extraEdges = 3;
         cfg.districtMargin = 5;
@@ -54,12 +54,12 @@ public class WorldHashTests
     public void ComputeHash_DifferentConfig_ProducesDifferentHash()
     {
         var cfg1 = ScriptableObject.CreateInstance<WorldGenConfig>();
-        cfg1.mapSize = new Vector2Int(64, 64);
+        cfg1.MapSize = new Vector2Int(64, 64);
         cfg1.districtCount = 8;
         cfg1.extraEdges = 3;
 
         var cfg2 = ScriptableObject.CreateInstance<WorldGenConfig>();
-        cfg2.mapSize = new Vector2Int(64, 64);
+        cfg2.MapSize = new Vector2Int(64, 64);
         cfg2.districtCount = 10; // Другое количество районов
         cfg2.extraEdges = 3;
 
@@ -78,7 +78,7 @@ public class WorldHashTests
     public void ComputeHash_OnlyGroundLayer_ConstantHash()
     {
         var cfg = ScriptableObject.CreateInstance<WorldGenConfig>();
-        cfg.mapSize = new Vector2Int(32, 32);
+        cfg.MapSize = new Vector2Int(32, 32);
 
         var pipeline = new WorldGenPipeline()
             .Add(new BaseFillStep());
@@ -96,7 +96,7 @@ public class WorldHashTests
     public void ComputeHash_FullPipeline_DeterministicHash()
     {
         var cfg = ScriptableObject.CreateInstance<WorldGenConfig>();
-        cfg.mapSize = new Vector2Int(80, 60);
+        cfg.MapSize = new Vector2Int(80, 60);
         cfg.districtCount = 10;
         cfg.extraEdges = 4;
         cfg.districtMargin = 4;

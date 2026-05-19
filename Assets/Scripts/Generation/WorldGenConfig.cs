@@ -7,13 +7,30 @@ namespace Diploma.Generation
     public sealed class WorldGenConfig : ScriptableObject
     {
         [Header("Base")]
-        public Vector2Int mapSize = new Vector2Int(128, 128);
+        [Tooltip("Размер карты в клетках по горизонтали")]
+        [Min(2)] public int mapSizeX = 128;
+        [Tooltip("Размер карты в клетках по вертикали")]
+        [Min(2)] public int mapSizeY = 128;
+
+        [Tooltip("Размер карты в клетках (вычисляется из mapSizeX и mapSizeY)")]
+        public Vector2Int MapSize
+        {
+            get => new Vector2Int(mapSizeX, mapSizeY);
+            set
+            {
+                mapSizeX = value.x;
+                mapSizeY = value.y;
+            }
+        }
 
         [Header("Graph / Districts (используем позже)")]
+        [Tooltip("Количество районов на карте")]
         [Min(1)] public int districtCount = 8;
+        [Tooltip("Количество дополнительных связей между районами (снижает изоляцию кластеров)")]
         [Min(0)] public int extraEdges = 3;
 
         [Header("Roads (используем позже)")]
+        [Tooltip("Радиус расширения дороги в клетках (влияет на ширину дороги)")]
         [Min(1)] public int roadRadius = 1;
 
         [Header("Buildings (используем позже)")]
@@ -51,9 +68,13 @@ namespace Diploma.Generation
         [Range(0f, 1f)] public float biomeSandThreshold = 0.85f;
 
         [Header("District placement (Graph)")]
+        [Tooltip("Внутренний отступ от края карты при размещении центров районов (в клетках)")]
         [Min(0)] public int districtMargin = 8;
+        [Tooltip("Минимальное расстояние между центрами двух районов (в клетках)")]
         [Min(0)] public int districtMinDistance = 10;
+        [Tooltip("Шаг сетки при размещении кандидатов центров (в клетках)")]
         [Min(1)] public int districtGridStep = 6;
+        [Tooltip("Максимальное число дорог, сходящихся в одном узле графа")]
         [Range(1, 4)] public int maxNodeDegree = 4;
 
         [Header("Decorations")]
@@ -95,8 +116,8 @@ namespace Diploma.Generation
 
                 uint h = 2166136261u; 
 
-                h = Mix(h, mapSize.x);
-                h = Mix(h, mapSize.y);
+                 h = Mix(h, mapSizeX);
+                h = Mix(h, mapSizeY);
 
                 h = Mix(h, districtCount);
                 h = Mix(h, extraEdges);

@@ -10,7 +10,7 @@ public class BuildingLayoutTests
     public void BuildingLayout_SameSeed_ProducesSameBuildings()
     {
         var cfg = ScriptableObject.CreateInstance<WorldGenConfig>();
-        cfg.mapSize = new Vector2Int(64, 64);
+        cfg.MapSize = new Vector2Int(64, 64);
         cfg.districtCount = 8;
         cfg.extraEdges = 3;
         cfg.districtMargin = 5;
@@ -44,7 +44,7 @@ public class BuildingLayoutTests
     public void BuildingLayout_DifferentSeeds_ProducesDifferentBuildings()
     {
         var cfg = ScriptableObject.CreateInstance<WorldGenConfig>();
-        cfg.mapSize = new Vector2Int(64, 64);
+        cfg.MapSize = new Vector2Int(64, 64);
         cfg.districtCount = 8;
 
         var pipeline = new WorldGenPipeline()
@@ -77,7 +77,7 @@ public class BuildingLayoutTests
     public void BuildingLayout_BuildingsDoNotOverlap()
     {
         var cfg = ScriptableObject.CreateInstance<WorldGenConfig>();
-        cfg.mapSize = new Vector2Int(64, 64);
+        cfg.MapSize = new Vector2Int(64, 64);
         cfg.districtCount = 8;
 
         var pipeline = new WorldGenPipeline()
@@ -105,7 +105,7 @@ public class BuildingLayoutTests
     public void BuildingLayout_BuildingsAreOnGround()
     {
         var cfg = ScriptableObject.CreateInstance<WorldGenConfig>();
-        cfg.mapSize = new Vector2Int(64, 64);
+        cfg.MapSize = new Vector2Int(64, 64);
         cfg.districtCount = 8;
 
         var pipeline = new WorldGenPipeline()

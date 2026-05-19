@@ -12,11 +12,11 @@ public class StreetCarvingStepTests
     public void Execute_CreatesRoadsBetweenNodes()
     {
         var cfg = ScriptableObject.CreateInstance<WorldGenConfig>();
-        cfg.mapSize = new Vector2Int(64, 64);
+        cfg.MapSize = new Vector2Int(64, 64);
         cfg.districtCount = 4;
         cfg.roadRadius = 1;
 
-        var world = new WorldData(cfg.mapSize);
+        var world = new WorldData(cfg.MapSize);
         var seed = new SeedContext(12345);
 
         var graphStep = new DistrictGraphStep();
@@ -40,7 +40,7 @@ public class StreetCarvingStepTests
     public void Execute_Deterministic_SameSeedSameRoads()
     {
         var cfg = ScriptableObject.CreateInstance<WorldGenConfig>();
-        cfg.mapSize = new Vector2Int(64, 64);
+        cfg.MapSize = new Vector2Int(64, 64);
         cfg.districtCount = 4;
 
         var seed1 = new SeedContext(12345);
@@ -69,10 +69,10 @@ public class StreetCarvingStepTests
     public void Execute_RoadsConnectAllNodes()
     {
         var cfg = ScriptableObject.CreateInstance<WorldGenConfig>();
-        cfg.mapSize = new Vector2Int(64, 64);
+        cfg.MapSize = new Vector2Int(64, 64);
         cfg.districtCount = 4;
 
-        var world = new WorldData(cfg.mapSize);
+        var world = new WorldData(cfg.MapSize);
         var seed = new SeedContext(12345);
 
         var graphStep = new DistrictGraphStep();
@@ -92,11 +92,11 @@ public class StreetCarvingStepTests
     public void Execute_RoadRadius_Respected()
     {
         var cfg = ScriptableObject.CreateInstance<WorldGenConfig>();
-        cfg.mapSize = new Vector2Int(64, 64);
+        cfg.MapSize = new Vector2Int(64, 64);
         cfg.districtCount = 4;
         cfg.roadRadius = 2;
 
-        var world = new WorldData(cfg.mapSize);
+        var world = new WorldData(cfg.MapSize);
         var seed = new SeedContext(12345);
         
         var graphStep = new DistrictGraphStep();
@@ -113,11 +113,11 @@ public class StreetCarvingStepTests
                 roadCount++;
         }
 
-        var world2 = new WorldData(cfg.mapSize);
+        var world2 = new WorldData(cfg.MapSize);
         var seed2 = new SeedContext(12345);
         
         var cfg2 = ScriptableObject.CreateInstance<WorldGenConfig>();
-        cfg2.mapSize = cfg.mapSize;
+        cfg2.MapSize = cfg.MapSize;
         cfg2.districtCount = cfg.districtCount;
         cfg2.roadRadius = 1;
         
@@ -143,10 +143,10 @@ public class StreetCarvingStepTests
     public void Execute_RoadsStayWithinBounds()
     {
         var cfg = ScriptableObject.CreateInstance<WorldGenConfig>();
-        cfg.mapSize = new Vector2Int(32, 32);
+        cfg.MapSize = new Vector2Int(32, 32);
         cfg.districtCount = 4;
 
-        var world = new WorldData(cfg.mapSize);
+        var world = new WorldData(cfg.MapSize);
         var seed = new SeedContext(12345);
         
         var graphStep = new DistrictGraphStep();
@@ -155,9 +155,9 @@ public class StreetCarvingStepTests
         var step = new StreetCarvingStep();
         step.Execute(cfg, seed, world);
 
-        for (int x = 0; x < cfg.mapSize.x; x++)
+        for (int x = 0; x < cfg.MapSize.x; x++)
         {
-            for (int y = 0; y < cfg.mapSize.y; y++)
+            for (int y = 0; y < cfg.MapSize.y; y++)
             {
                 Assert.IsTrue(world.Roads.InBounds(x, y));
             }
@@ -204,9 +204,9 @@ public class StreetCarvingStepTests
     public void Execute_NoGraph_ThrowsException()
     {
         var cfg = ScriptableObject.CreateInstance<WorldGenConfig>();
-        cfg.mapSize = new Vector2Int(64, 64);
+        cfg.MapSize = new Vector2Int(64, 64);
 
-        var world = new WorldData(cfg.mapSize);
+        var world = new WorldData(cfg.MapSize);
 
         var seed = new SeedContext(12345);
         var step = new StreetCarvingStep();
@@ -218,7 +218,7 @@ public class StreetCarvingStepTests
 
     private WorldData CreateWorldWithGraph(WorldGenConfig cfg, SeedContext seed)
     {
-        var world = new WorldData(cfg.mapSize);
+        var world = new WorldData(cfg.MapSize);
         var graphStep = new DistrictGraphStep();
         graphStep.Execute(cfg, seed, world);
         return world;

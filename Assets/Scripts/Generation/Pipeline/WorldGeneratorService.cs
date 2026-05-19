@@ -55,7 +55,7 @@ namespace Diploma.Generation.Pipeline
         private static WorldData GenerateInternal(int seed, WorldGenConfig config, WorldGenPipeline pipeline, int attemptIndex)
         {
             var seedContext = new SeedContext(seed);
-            var world = new WorldData(config.mapSize, config.terrainSmoothChance);
+            var world = new WorldData(config.MapSize, config.terrainSmoothChance);
 
             world.Meta = new WorldMeta
             {

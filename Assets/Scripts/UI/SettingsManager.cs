@@ -9,6 +9,29 @@ using Diploma.Generation;
 namespace Diploma.UI
 {
     /// <summary>
+    /// Per-parameter setting for WorldGenConfig fields.
+    /// Stored in the inspector list — each entry controls how one config field appears in the settings panel.
+    /// </summary>
+    [Serializable]
+    public class ParameterSetting
+    {
+        [Tooltip("Имя поля в WorldGenConfig (заполняется автоматически)")]
+        public string fieldName;
+
+        [Tooltip("Показывать ли этот параметр в панели настроек")]
+        public bool enabled = true;
+
+        [Tooltip("Минимальное значение для слайдера (0 = использовать дефолт)")]
+        public float minValue = 0f;
+
+        [Tooltip("Максимальное значение для слайдера (0 = использовать дефолт)")]
+        public float maxValue = 0f;
+
+        [Tooltip("Текст для отображения вместо имени поля (пустое = использовать fieldName)")]
+        public string displayName = "";
+    }
+
+    /// <summary>
     /// Менеджер настроек генерации. Динамически создаёт список параметров WorldGenConfig.
     /// Исключает: префабы, пороги биомов, октавы, минимальные расстояния, mapSize.
     /// Автосохранение в PlayerPrefs.
@@ -26,15 +49,12 @@ namespace Diploma.UI
         [Header("Configuration")]
         public WorldGenConfig config;
 
-        [Header("Excluded Categories")]
-        public bool excludeBuildingPrefabs = true;
-        public bool excludeTreePrefabs = true;
-        public bool excludeLampPrefabs = true;
-        public bool excludeBenchPrefabs = true;
-        public bool excludeBiomeThresholds = true;
-        public bool excludeBiomeOctaves = true;
-        public bool excludeMinDistances = true;
-        public bool excludeTerrainSmooth = true;
+        [Header("Per-Parameter Settings")]
+        [Tooltip("Автозаполняется всеми числовыми параметрами WorldGenConfig при старте. " +
+                 "enabled = показывать в панели настроек. " +
+                 "min/max = границы слайдера. " +
+                 "displayName = текст лейбла (пустой = использовать имя поля).")]
+        public List<ParameterSetting> parameterSettings = new List<ParameterSetting>();
 
         [Header("Setting Item Layout")]
         [Tooltip("Размер шрифта текста лейбла")]
@@ -61,9 +81,12 @@ namespace Diploma.UI
         private Dictionary<string, Slider> parameterSliders = new Dictionary<string, Slider>();
         private Dictionary<string, TMP_Text> parameterLabels = new Dictionary<string, TMP_Text>();
         private Dictionary<string, object> defaultValues = new Dictionary<string, object>();
+        private Dictionary<string, ParameterSetting> parameterSettingsByName = new Dictionary<string, ParameterSetting>();
         private bool isPanelOpen = false;
+        private bool parameterSettingsBuilt = false;
 
         private const string SETTINGS_PREFIX = "WorldGenConfig_";
+        private const string PARAM_SETTINGS_KEY = "SettingsManager_ParameterSettings";
 
         private void Awake()
         {
@@ -71,6 +94,8 @@ namespace Diploma.UI
                 settingsPanel.SetActive(false);
 
             CacheDefaultValues();
+            LoadParameterSettings();
+            BuildParameterSettingsList();
         }
 
         private void Start()
@@ -93,6 +118,164 @@ namespace Diploma.UI
                 resetButton.onClick.RemoveListener(ResetToDefaults);
         }
 
+        // =====================================================================
+        // ParameterSettings management
+        // =====================================================================
+
+        /// <summary>
+        /// Ensures parameterSettings list has one entry per numeric field in WorldGenConfig.
+        /// Called in Awake() — the inspector list is fully populated automatically on startup.
+        /// Merges with any entries already saved in PlayerPrefs from a previous session.
+        /// </summary>
+        private void BuildParameterSettingsList()
+        {
+            if (config == null) return;
+
+            parameterSettingsByName.Clear();
+
+            var fields = config.GetType().GetFields(
+                System.Reflection.BindingFlags.Public |
+                System.Reflection.BindingFlags.Instance);
+
+            var entriesToRemove = new HashSet<string>(parameterSettings.Select(s => s.fieldName));
+
+            foreach (var field in fields)
+            {
+                if (field.IsInitOnly || field.IsLiteral) continue;
+                if (field.FieldType.IsArray) continue;
+                if (field.FieldType != typeof(int) && field.FieldType != typeof(float)) continue;
+
+                string fieldName = field.Name;
+                entriesToRemove.Remove(fieldName);
+
+                ParameterSetting ps = parameterSettings.FirstOrDefault(s => s.fieldName == fieldName);
+                if (ps == null)
+                {
+                    ps = new ParameterSetting
+                    {
+                        fieldName = fieldName,
+                        enabled = true,
+                        displayName = ""
+                    };
+                    parameterSettings.Add(ps);
+                }
+                // Always keep displayName in sync with field name when empty
+                if (string.IsNullOrWhiteSpace(ps.displayName))
+                {
+                    ps.displayName = fieldName;
+                }
+                // Initialise range if still unset
+                if (ps.minValue == 0f && ps.maxValue == 0f)
+                {
+                    if (field.FieldType == typeof(int))
+                    {
+                        GetIntRange(fieldName, out int dMin, out int dMax);
+                        ps.minValue = dMin;
+                        ps.maxValue = dMax;
+                    }
+                    else if (field.FieldType == typeof(float))
+                    {
+                        GetFloatRange(fieldName, out float dMin, out float dMax, out _);
+                        ps.minValue = dMin;
+                        ps.maxValue = dMax;
+                    }
+                }
+
+                parameterSettingsByName[fieldName] = ps;
+            }
+
+            // Remove entries whose fields no longer exist in the config asset
+            parameterSettings.RemoveAll(s => entriesToRemove.Contains(s.fieldName));
+            parameterSettingsBuilt = true;
+        }
+
+        /// <summary>
+        /// Persist per-parameter overrides (enabled, min/max, displayName) to PlayerPrefs.
+        /// </summary>
+        private void SaveParameterSettings()
+        {
+            if (parameterSettings == null || parameterSettings.Count == 0)
+            {
+                PlayerPrefs.DeleteKey(PARAM_SETTINGS_KEY);
+                return;
+            }
+
+            try
+            {
+                var entries = parameterSettings
+                    .Where(s => !string.IsNullOrEmpty(s.fieldName))
+                    .Select(s => $"{s.fieldName}|{(s.enabled ? 1 : 0)}|{s.minValue}|{s.maxValue}|{s.displayName.Replace("|", "&#124;")}")
+                    .ToArray();
+
+                PlayerPrefs.SetString(PARAM_SETTINGS_KEY, string.Join("\n", entries));
+                PlayerPrefs.Save();
+            }
+            catch (Exception e)
+            {
+                Debug.LogWarning($"[SettingsManager] Failed to save ParameterSettings: {e.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Load per-parameter overrides from PlayerPrefs. Merges into existing list.
+        /// </summary>
+        private void LoadParameterSettings()
+        {
+            string json = PlayerPrefs.GetString(PARAM_SETTINGS_KEY, "");
+            if (string.IsNullOrEmpty(json)) return;
+
+            try
+            {
+                var lines = json.Split(new[] { '\n' }, StringSplitOptions.RemoveEmptyEntries);
+                var loaded = new Dictionary<string, ParameterSetting>();
+
+                foreach (var line in lines)
+                {
+                    var parts = line.Split(new[] { '|' }, 5);
+                    if (parts.Length < 5) continue;
+
+                    string fn = parts[0];
+                    if (!bool.TryParse(parts[1], out bool enabled)) continue;
+                    if (!float.TryParse(parts[2], out float minVal)) continue;
+                    if (!float.TryParse(parts[3], out float maxVal)) continue;
+                    string display = parts[4].Replace("&#124;", "|");
+
+                    loaded[fn] = new ParameterSetting
+                    {
+                        fieldName = fn,
+                        enabled = enabled,
+                        minValue = minVal,
+                        maxValue = maxVal,
+                        displayName = display
+                    };
+                }
+
+                // Merge loaded into existing list (preserve order, update matching entries)
+                for (int i = 0; i < parameterSettings.Count; i++)
+                {
+                    if (loaded.TryGetValue(parameterSettings[i].fieldName, out ParameterSetting loadedPs))
+                    {
+                        parameterSettings[i] = loadedPs;
+                    }
+                }
+            }
+            catch (Exception e)
+            {
+                Debug.LogWarning($"[SettingsManager] Failed to load ParameterSettings: {e.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Returns the ParameterSetting for a field, or null if not found / disabled.
+        /// </summary>
+        private bool TryGetParameterSetting(string fieldName, out ParameterSetting ps)
+        {
+            ps = null;
+            if (string.IsNullOrEmpty(fieldName)) return false;
+            parameterSettingsByName.TryGetValue(fieldName, out ps);
+            return ps != null && ps.enabled;
+        }
+
         private void CacheDefaultValues()
         {
             if (config == null) return;
@@ -105,6 +288,128 @@ namespace Diploma.UI
                 defaultValues[field.Name] = field.GetValue(config);
             }
         }
+
+        // =====================================================================
+        // Range helpers — now read from ParameterSetting when available
+        // =====================================================================
+
+        private static readonly Dictionary<string, (int min, int max)> IntFallbackRanges = new Dictionary<string, (int, int)>
+        {
+            { "districtCount", (1, 20) },
+            { "extraEdges", (0, 10) },
+            { "roadRadius", (0, 3) },
+            { "districtMargin", (0, 20) },
+            { "districtMinDistance", (0, 30) },
+            { "districtGridStep", (1, 20) },
+            { "maxNodeDegree", (1, 4) },
+            { "minBuildingGap", (0, 5) },
+            { "minBuildingDistance", (0, 5) },
+            { "terrainSmoothChance", (0, 100) },
+            { "biomeOctaves", (1, 6) },
+            { "decorationMinDistanceFromRoad", (0, 5) },
+            { "decorationMaxDistanceFromRoad", (0, 50) },
+            { "treeSpawnChance", (0, 100) },
+            { "maxTreeCount", (0, 1000) },
+            { "lampInterval", (2, 20) },
+            { "minRoadSegmentLength", (3, 20) },
+            { "minBenchDistance", (0, 5) }
+        };
+
+        private static readonly Dictionary<string, (float min, float max, string fmt)> FloatFallbackRanges = new Dictionary<string, (float, float, string)>
+        {
+            { "biomeScale", (0.01f, 0.2f, "F3") },
+            { "biomePersistence", (0.1f, 1.0f, "F2") },
+            { "biomeLacunarity", (1.0f, 4.0f, "F1") }
+        };
+
+        private void GetIntRange(string fieldName, out int min, out int max)
+        {
+            if (parameterSettingsBuilt
+                && TryGetParameterSetting(fieldName, out ParameterSetting ps)
+                && ps.minValue > 0f && ps.maxValue > 0f
+                && ps.minValue < ps.maxValue)
+            {
+                min = Mathf.RoundToInt(ps.minValue);
+                max = Mathf.RoundToInt(ps.maxValue);
+            }
+            else if (IntFallbackRanges.TryGetValue(fieldName, out var fb))
+            {
+                min = fb.min;
+                max = fb.max;
+            }
+            else
+            {
+                min = 0;
+                max = 100;
+            }
+        }
+
+        private void GetFloatRange(string fieldName, out float min, out float max, out string format)
+        {
+            if (parameterSettingsBuilt
+                && TryGetParameterSetting(fieldName, out ParameterSetting ps)
+                && ps.minValue > 0f && ps.maxValue > 0f
+                && ps.minValue < ps.maxValue)
+            {
+                min = ps.minValue;
+                max = ps.maxValue;
+                if (fieldName == "biomeScale") format = "F3";
+                else if (fieldName == "biomeLacunarity") format = "F1";
+                else format = "F2";
+            }
+            else if (FloatFallbackRanges.TryGetValue(fieldName, out var fb))
+            {
+                min = fb.min;
+                max = fb.max;
+                format = fb.fmt;
+            }
+            else
+            {
+                min = 0f;
+                max = 1f;
+                format = "F2";
+            }
+        }
+
+        private string GetFloatFormat(string fieldName)
+        {
+            if (fieldName == "biomeScale") return "F3";
+            if (fieldName == "biomeLacunarity") return "F1";
+            return "F2";
+        }
+
+        // =====================================================================
+        // Parameter label helpers
+        // =====================================================================
+
+        /// <summary>
+        /// Returns the display name for a config field. Falls back to fieldName if
+        /// no ParameterSetting exists or its displayName is empty.
+        /// </summary>
+        private string GetDisplayName(string fieldName)
+        {
+            if (string.IsNullOrEmpty(fieldName)) return fieldName;
+            if (parameterSettingsBuilt
+                && parameterSettingsByName.TryGetValue(fieldName, out ParameterSetting ps)
+                && !string.IsNullOrWhiteSpace(ps.displayName))
+            {
+                return ps.displayName;
+            }
+            return fieldName;
+        }
+
+        private bool ShouldExcludeParameter(string fieldName)
+        {
+            // Only non-numeric / non-slidable types need exclusion for Save/Load.
+            // The visibility gate is the per-parameter enabled flag, checked in CreateSettingItems.
+            if (fieldName.Contains("mapsize")) return true;
+            if (fieldName.Contains("hash")) return true;
+            return false;
+        }
+
+        // =====================================================================
+        // Open / Close
+        // =====================================================================
 
             public void OpenSettings()
             {
@@ -146,9 +451,10 @@ namespace Diploma.UI
                     }
                 }
 
-                // Fix broken ScrollRect / Viewport that clips everything
-                // Fix broken ScrollRect / Viewport that clips everything
                 FixScrollRect();
+
+                // Rebuild per-parameter settings before creating UI items
+                BuildParameterSettingsList();
 
                 // Configure SettingsContent VLG per inspector parameters
                 if (settingsContent != null)
@@ -156,20 +462,20 @@ namespace Diploma.UI
                     VerticalLayoutGroup contentVLG = settingsContent.GetComponent<VerticalLayoutGroup>();
                     if (contentVLG != null)
                     {
-                        contentVLG.spacing = itemItemSpacing;          // отступ между item'ами
-                        contentVLG.padding = new RectOffset(              // отступ от левого края контейнера
-                            Mathf.RoundToInt(labelLeftPadding),    // left — не обрезает, округляет
-                            Mathf.RoundToInt(labelLeftPadding * 0.5f), // right — немного меньше
-                            Mathf.RoundToInt(labelLeftPadding * 0.5f), // top
-                            Mathf.RoundToInt(labelLeftPadding * 0.5f)  // bottom
+                        contentVLG.spacing = itemItemSpacing;
+                        contentVLG.padding = new RectOffset(
+                            Mathf.RoundToInt(labelLeftPadding),
+                            Mathf.RoundToInt(labelLeftPadding * 0.5f),
+                            Mathf.RoundToInt(labelLeftPadding * 0.5f),
+                            Mathf.RoundToInt(labelLeftPadding * 0.5f)
                         );
-                        contentVLG.childAlignment = TextAnchor.UpperLeft;  // не центрировать, прижимать к верху-слева
-                        contentVLG.childControlWidth = true;               // разрешаем VLG контролировать ширину (все равно false-expand)
+                        contentVLG.childAlignment = TextAnchor.UpperLeft;
+                        contentVLG.childControlWidth = true;
                         contentVLG.childControlHeight = true;
-                        contentVLG.childForceExpandWidth = true;           // дети растягиваются на всю доступную ширину
+                        contentVLG.childForceExpandWidth = true;
                         contentVLG.childForceExpandHeight = false;
                         Debug.Log($"[SettingsManager] Configured SettingsContent VLG: spacing={itemItemSpacing}, " +
-                            $"padding.left={labelLeftPadding}, upperForceExpandWidth=true");
+                            $"padding.left={labelLeftPadding}, forceExpandWidth=true");
                     }
                 }
 
@@ -178,8 +484,9 @@ namespace Diploma.UI
                 if (srForViewport != null && srForViewport.viewport != null)
                 {
                     LayoutRebuilder.ForceRebuildLayoutImmediate(srForViewport.viewport.GetComponent<RectTransform>());
-                    Debug.Log("[SettingsManager] Viewport VLG rebuilt. Viewport rect=" + srForViewport.viewport.GetComponent<RectTransform>().rect);
+                    Debug.Log("[SettingsManager] Viewport VLG rebuilt.");
                 }
+
                 LoadSettings();
 
                 foreach (Transform child in settingsContent)
@@ -190,69 +497,16 @@ namespace Diploma.UI
 
                 CreateSettingItems();
 
-                // Force settingsContent VLG to recompute children widths/heights after items are created
+                // Force settingsContent VLG to recompute children
                 if (settingsContent != null)
                 {
                     LayoutRebuilder.ForceRebuildLayoutImmediate(settingsContent.GetComponent<RectTransform>());
-                    Debug.Log("[SettingsManager] SettingsContent VLG rebuilt. Content rect=" + settingsContent.GetComponent<RectTransform>().rect);
+                    Debug.Log("[SettingsManager] SettingsContent VLG rebuilt.");
                 }
 
-                 // Force layout and canvas system to update,
-                 // otherwise ScrollRect keeps stale content positions from before items were added
                 UnityEngine.Canvas.ForceUpdateCanvases();
 
-                 if (settingsContent != null && settingsContent is RectTransform contentRtForDiag)
-                {
-                    // Diagnose layout chain before rebuild
-                    VerticalLayoutGroup vlg = settingsContent.GetComponent<VerticalLayoutGroup>();
-                    ContentSizeFitter csf = settingsContent.GetComponent<ContentSizeFitter>();
-                    LayoutElement contentLe = settingsContent.GetComponent<LayoutElement>();
-                    Debug.Log($"[SettingsManager] Pre-rebuild: content rect={contentRtForDiag.rect}, " +
-                        $"VLG={vlg != null}, CSF={csf != null}, " +
-                        $"CSF_verticalFit={(csf != null ? csf.verticalFit.ToString() : "N/A")}, " +
-                        $"VLG_childControlHeight={(vlg != null ? vlg.childControlHeight.ToString() : "N/A")}, " +
-                        $"content LayoutElement={(contentLe != null ? $"exists preferredH={contentLe.preferredHeight}" : "null")}");
-
-                    int childCount = settingsContent.childCount;
-                    Debug.Log($"[SettingsManager] Content has {childCount} children (first 5):");
-                    for (int i = 0; i < childCount && i < 5; i++)
-                    {
-                        Transform child = settingsContent.GetChild(i);
-                        LayoutElement le = child.GetComponent<LayoutElement>();
-                        RectTransform crt = child.GetComponent<RectTransform>();
-                        Debug.Log($"[SettingsManager] Child[{i}] '{child.name}': " +
-                            $"LE={le != null}, preferredH={(le != null ? le.preferredHeight.ToString("F1") : "N/A")}, " +
-                            $"RT_sizeDelta={(crt != null ? crt.sizeDelta.ToString() : "N/A")}, " +
-                            $"RT_anchoredPos={(crt != null ? crt.anchoredPosition.ToString() : "N/A")}");
-                    }
-
-                     // Rebuild chain: ScrollRect parent first, then content
-                     ScrollRect parentScroll2 = settingsPanel.GetComponentInChildren<ScrollRect>(true);
-                     if (parentScroll2 != null && parentScroll2.gameObject != contentRtForDiag.gameObject)
-                         LayoutRebuilder.ForceRebuildLayoutImmediate(parentScroll2.GetComponent<RectTransform>());
-                    LayoutRebuilder.ForceRebuildLayoutImmediate(contentRtForDiag);
-                    Debug.Log($"[SettingsManager] Post-LayoutRebuild: SettingsContent. Rect={contentRtForDiag.rect}");
-
-                    // Diagnose again after rebuild
-                    VerticalLayoutGroup vlgAfter = settingsContent.GetComponent<VerticalLayoutGroup>();
-                    ContentSizeFitter csfAfter = settingsContent.GetComponent<ContentSizeFitter>();
-                    Debug.Log($"[SettingsManager] Post-rebuild: VLG={vlgAfter != null}, CSF={csfAfter != null}, " +
-                        $"CSF_verticalFit={(csfAfter != null ? csfAfter.verticalFit.ToString() : "N/A")}");
-
-                    // Re-check each child preferred height after rebuild
-                    for (int i = 0; i < childCount && i < 5; i++)
-                    {
-                        Transform child = settingsContent.GetChild(i);
-                        LayoutElement le = child.GetComponent<LayoutElement>();
-                        Debug.Log($"[SettingsManager] Post-rebuild Child[{i}] '{child.name}': " +
-                            $"preferredH={(le != null ? le.preferredHeight.ToString("F1") : "N/A")}");
-                    }
-                }
-
-                // Force final canvas update
-                UnityEngine.Canvas.ForceUpdateCanvases();
-
-                // Set content height programmatically — ContentSizeFitter was removed to avoid conflict with VLG
+                // Set content height programmatically
                 if (settingsContent is RectTransform contentRtForHeight)
                 {
                     float totalContentHeight = 0f;
@@ -262,149 +516,102 @@ namespace Diploma.UI
                         RectTransform childRt = child.GetComponent<RectTransform>();
                         totalContentHeight += (childRt != null ? childRt.sizeDelta.y : 55f);
                         if (i < settingsContent.childCount - 1)
-                            totalContentHeight += 10f; // VLG spacing
+                            totalContentHeight += itemItemSpacing;
                     }
-                    totalContentHeight += 20f; // VLG padding top+bottom
+                    totalContentHeight += labelLeftPadding * 0.5f * 2f; // VLG padding top + bottom
 
                     contentRtForHeight.sizeDelta = new Vector2(contentRtForHeight.sizeDelta.x, totalContentHeight);
-                    Debug.Log($"[SettingsManager] Set content height to {totalContentHeight:F0}. Rect: {contentRtForHeight.rect}");
+                    Debug.Log($"[SettingsManager] Set content height to {totalContentHeight:F0}.");
 
-                // Rebuild ScrollRect so it picks up new content size
-                if (settingsPanel != null)
-                {
-                    ScrollRect scrollForRebuild = settingsPanel.GetComponentInChildren<ScrollRect>(true);
-                    if (scrollForRebuild != null)
+                    if (settingsPanel != null)
                     {
-                        LayoutRebuilder.ForceRebuildLayoutImmediate(scrollForRebuild.GetComponent<RectTransform>());
-                        Debug.Log($"[SettingsManager] Rebuilt ScrollRect. Content size: {scrollForRebuild.content?.GetComponent<RectTransform>()?.rect}");
+                        ScrollRect scrollForRebuild = settingsPanel.GetComponentInChildren<ScrollRect>(true);
+                        if (scrollForRebuild != null)
+                        {
+                            LayoutRebuilder.ForceRebuildLayoutImmediate(scrollForRebuild.GetComponent<RectTransform>());
+                        }
                     }
-                }
                 }
 
                 settingsPanel.SetActive(true);
                 isPanelOpen = true;
             }
 
-            /// <summary>
-            /// Ensures ScrollRect and Viewport are configured so items are actually visible.
-            /// Fixes: horizontal=true, movementType=Elastic, Viewport Image alpha=0 + Mask.showMaskGraphic=false.
-            /// </summary>
-            private void FixScrollRect()
+        private void FixScrollRect()
+        {
+            if (settingsPanel == null)
             {
-                if (settingsPanel == null)
-                {
-                    Debug.LogWarning("[FixScrollRect] settingsPanel is null, aborting.");
-                    return;
-                }
-
-                ScrollRect scroll = settingsPanel.GetComponentInChildren<ScrollRect>(true);
-                if (scroll == null)
-                {
-                    Debug.LogWarning("[FixScrollRect] No ScrollRect found in settingsPanel.");
-                    return;
-                }
-
-                Debug.Log($"[FixScrollRect] Found ScrollRect: h={scroll.horizontal}, v={scroll.vertical}, movement={scroll.movementType}, " +
-                    $"viewport={scroll.viewport?.name ?? "null"}, content={scroll.content?.name ?? "null"}");
-
-                // Check if this ScrollRect is on the content itself (would be wrong)
-                Debug.Log($"[FixScrollRect] ScrollRect is on: {scroll.gameObject.name}, parent: {scroll.transform.parent?.name ?? "root"}");
-
-                // Log ContentSizeFitter and VerticalLayoutGroup on content
-                if (scroll.content != null)
-                {
-                    ContentSizeFitter csf = scroll.content.GetComponent<ContentSizeFitter>();
-                    VerticalLayoutGroup vlg = scroll.content.GetComponent<VerticalLayoutGroup>();
-                    Debug.Log($"[FixScrollRect] Content '{scroll.content.name}': " +
-                        $"CSF={csf != null}{(csf != null ? $", vFit={csf.verticalFit}" : "")}, " +
-                        $"VLG={vlg != null}{(vlg != null ? $", chControlH={vlg.childControlHeight}" : "")}");
-                }
-
-                // Fix horizontal scrolling — should be vertical-only
-                if (scroll.horizontal)
-                {
-                    scroll.horizontal = false;
-                    Debug.Log("[FixScrollRect] Fixed: horizontal = false");
-                }
-
-                // Fix movement type — Elastic can send content off-screen
-                if (scroll.movementType != ScrollRect.MovementType.Clamped)
-                {
-                    scroll.movementType = ScrollRect.MovementType.Clamped;
-                    Debug.Log($"[FixScrollRect] Fixed: movementType = {scroll.movementType}");
-                }
-
-                 // Fix Viewport: Image alpha + Mask
-                 if (scroll.viewport != null)
-                {
-                    Debug.Log($"[FixScrollRect] Viewport '{scroll.viewport.name}': " +
-                        $"rect={scroll.viewport.GetComponent<RectTransform>()?.rect}, " +
-                        $"hasRectMask={(scroll.viewport.GetComponent<RectMask2D>() != null)}, " +
-                        $"hasMask={(scroll.viewport.GetComponent<Mask>() != null)}");
-
-                    Image vpImage = scroll.viewport.GetComponent<Image>();
-                    if (vpImage != null)
-                    {
-                        if (vpImage.color.a <= 0.01f)
-                        {
-                            vpImage.color = new Color(vpImage.color.r, vpImage.color.g, vpImage.color.b, 1f);
-                            Debug.Log("[FixScrollRect] Fixed: Viewport Image alpha was 0 → set to 1");
-                        }
-                        else
-                        {
-                            Debug.Log($"[FixScrollRect] Viewport Image alpha OK: {vpImage.color.a:F2}");
-                        }
-                    }
-                    else
-                    {
-                        Debug.Log("[FixScrollRect] Viewport has no Image component");
-                    }
-
-                    Mask vpMask = scroll.viewport.GetComponent<Mask>();
-                    if (vpMask != null)
-                    {
-                        if (!vpMask.showMaskGraphic)
-                        {
-                            vpMask.showMaskGraphic = true;
-                            Debug.Log("[FixScrollRect] Fixed: Mask.showMaskGraphic was false → set to true");
-                        }
-                        else
-                        {
-                            Debug.Log("[FixScrollRect] Mask.showMaskGraphic already = true");
-                        }
-                    }
-                    else
-                    {
-                        Debug.Log("[FixScrollRect] Viewport has no Mask component");
-                    }
-                }
-                else
-                {
-                    Debug.LogWarning("[FixScrollRect] ScrollRect.viewport is NULL!");
-                }
+                Debug.LogWarning("[FixScrollRect] settingsPanel is null, aborting.");
+                return;
             }
 
-            private bool IsContentInsideScrollView(Transform content)
+            ScrollRect scroll = settingsPanel.GetComponentInChildren<ScrollRect>(true);
+            if (scroll == null)
             {
-                if (content == null) return false;
-                Transform current = content.parent;
-                while (current != null)
-                {
-                    if (current.name.Contains("SettingsScrollView"))
-                        return true;
-                    current = current.parent;
-                }
-                return false;
+                Debug.LogWarning("[FixScrollRect] No ScrollRect found in settingsPanel.");
+                return;
             }
+
+            if (scroll.horizontal)
+            {
+                scroll.horizontal = false;
+                Debug.Log("[FixScrollRect] Fixed: horizontal = false");
+            }
+
+            if (scroll.movementType != ScrollRect.MovementType.Clamped)
+            {
+                scroll.movementType = ScrollRect.MovementType.Clamped;
+                Debug.Log($"[FixScrollRect] Fixed: movementType = {scroll.movementType}");
+            }
+
+            if (scroll.viewport != null)
+            {
+                Image vpImage = scroll.viewport.GetComponent<Image>();
+                if (vpImage != null && vpImage.color.a <= 0.01f)
+                {
+                    vpImage.color = new Color(vpImage.color.r, vpImage.color.g, vpImage.color.b, 1f);
+                    Debug.Log("[FixScrollRect] Fixed: Viewport Image alpha was 0 → set to 1");
+                }
+
+                Mask vpMask = scroll.viewport.GetComponent<Mask>();
+                if (vpMask != null && !vpMask.showMaskGraphic)
+                {
+                    vpMask.showMaskGraphic = true;
+                    Debug.Log("[FixScrollRect] Fixed: Mask.showMaskGraphic = true");
+                }
+            }
+            else
+            {
+                Debug.LogWarning("[FixScrollRect] ScrollRect.viewport is NULL!");
+            }
+        }
+
+        private bool IsContentInsideScrollView(Transform content)
+        {
+            if (content == null) return false;
+            Transform current = content.parent;
+            while (current != null)
+            {
+                if (current.name.Contains("SettingsScrollView"))
+                    return true;
+                current = current.parent;
+            }
+            return false;
+        }
 
         public void CloseSettings()
         {
             if (settingsPanel == null) return;
 
             SaveSettings();
+            SaveParameterSettings();
             settingsPanel.SetActive(false);
             isPanelOpen = false;
         }
+
+        // =====================================================================
+        // Create UI items
+        // =====================================================================
 
         private void CreateSettingItems()
         {
@@ -438,99 +645,82 @@ namespace Diploma.UI
                 string fieldName = field.Name;
                 object value = field.GetValue(config);
 
-                if (ShouldExcludeParameter(fieldName))
-                    continue;
+                if (ShouldExcludeParameter(fieldName)) continue;
 
-                 GameObject itemGO = Instantiate(settingItemPrefab, settingsContent);
+                // Per-parameter enabled gate
+                if (parameterSettingsBuilt
+                    && parameterSettingsByName.TryGetValue(fieldName, out ParameterSetting psCheck)
+                    && !psCheck.enabled)
+                {
+                    skipped++;
+                    continue;
+                }
+
+                GameObject itemGO = Instantiate(settingItemPrefab, settingsContent);
                 itemGO.name = "Setting_" + fieldName;
 
-                // Log immediate after instantiate
-                RectTransform rtCheck = itemGO.GetComponent<RectTransform>();
-                Debug.Log($"[SettingsManager] Instantiate '{itemGO.name}': " +
-                    $"RT={(rtCheck != null)}, anchorMin={(rtCheck != null ? rtCheck.anchorMin.ToString() : "N/A")}, " +
-                    $"anchorMax={(rtCheck != null ? rtCheck.anchorMax.ToString() : "N/A")}, " +
-                    $"sizeDelta={(rtCheck != null ? rtCheck.sizeDelta.ToString() : "N/A")}, " +
-                    $"anchoredPos={(rtCheck != null ? rtCheck.anchoredPosition.ToString() : "N/A")}, " +
-                    $"parent='{itemGO.transform.parent?.name ?? "null"}'");
-
-                // Disable any embedded Canvas on the prefab to avoid rendering conflicts with the main panel Canvas
+                // Disable any embedded Canvas on the prefab to avoid rendering conflicts
                 Canvas embeddedCanvas = itemGO.GetComponent<Canvas>();
                 if (embeddedCanvas != null)
                 {
                     embeddedCanvas.enabled = false;
-                    Debug.Log($"[SettingsManager] Disabled embedded Canvas on '{itemGO.name}'.");
                 }
 
                 int uiLayer = LayerMask.NameToLayer("UI");
                 if (uiLayer >= 0)
                     itemGO.layer = uiLayer;
 
-                // ---------- root (setting item wrapper) ----------
+                // ---------- root RectTransform ----------
                 RectTransform rootRt = itemGO.GetComponent<RectTransform>();
                 if (rootRt != null)
                 {
-                    // root anchors spread horizontally (0,0)-(1,0): top edge pinned to parent top
                     rootRt.anchorMin = new Vector2(0, 0);
                     rootRt.anchorMax = new Vector2(1, 0);
                     rootRt.pivot = new Vector2(0.5f, 1f);
                     rootRt.anchoredPosition = Vector2.zero;
-                    Debug.Log("[SettingsManager] Fixed root RT anchorMin=" + rootRt.anchorMin + " anchorMax=" + rootRt.anchorMax);
-                }
-                else
-                {
-                    Debug.LogWarning("[SettingsManager] No RectTransform on root!");
                 }
 
-                // root explicit height — parent VLG reads this via LayoutElement
                 LayoutElement rootLe = itemGO.GetComponent<LayoutElement>();
-                if (rootLe == null)
-                    rootLe = itemGO.AddComponent<LayoutElement>();
+                if (rootLe == null) rootLe = itemGO.AddComponent<LayoutElement>();
                 float totalH = itemTotalHeight > 0f ? itemTotalHeight : labelHeight + itemSpacing + sliderHeight;
                 rootLe.preferredHeight = totalH;
                 rootLe.minHeight = totalH;
                 rootLe.flexibleHeight = 0f;
-                rootLe.preferredWidth = -1f;     // fill parent width
+                rootLe.preferredWidth = -1f;
                 rootLe.minWidth = 0f;
 
-                // VLG stacks Label above Slider vertically inside each item
                 VerticalLayoutGroup vlg = itemGO.GetComponent<VerticalLayoutGroup>();
-                if (vlg == null)
-                {
-                    vlg = itemGO.AddComponent<VerticalLayoutGroup>();
-                }
+                if (vlg == null) vlg = itemGO.AddComponent<VerticalLayoutGroup>();
                 vlg.padding = new RectOffset(0, 0, 0, 0);
-                vlg.spacing = itemSpacing;   // отступ label ↔ slider внутри одного item
-                vlg.childControlWidth = true;   // уважаем preferredWidth детей
+                vlg.spacing = itemSpacing;
+                vlg.childControlWidth = true;
                 vlg.childControlHeight = true;
-                vlg.childForceExpandWidth = false; // не принудительно растягиваем — preferredWidth работает
+                vlg.childForceExpandWidth = false;
                 vlg.childForceExpandHeight = false;
                 vlg.childAlignment = TextAnchor.UpperLeft;
 
-                // ---------- children layout ----------
-                // VLG childControlHeight drives child Y-positions via SetChildAlongAxis automatically.
-                // Use LayoutElement.preferredWidth/Height to tell VLG the geometry of each child.
+                // ---------- Label ----------
                 if (itemGO.transform.Find("Label") is Transform labelTf
                     && labelTf.GetComponent<RectTransform>() is RectTransform labelRt)
                 {
-                    // Anchor: left edge at x=0 in parent local space (left-aligned container)
                     labelRt.anchorMin = new Vector2(0f, 0f);
-                    labelRt.anchorMax = new Vector2(0f, 0f);   // not stretched — fixed preferredWidth
-                    labelRt.pivot = new Vector2(0f, 0f);       // pivot = left-bottom corner
-                    labelRt.anchoredPosition = new Vector2(labelLeftPadding, 0f); // отступ от левого края
+                    labelRt.anchorMax = new Vector2(0f, 0f);
+                    labelRt.pivot = new Vector2(0f, 0f);
+                    labelRt.anchoredPosition = new Vector2(labelLeftPadding, 0f);
 
                     LayoutElement labelLe = labelRt.GetComponent<LayoutElement>();
                     if (labelLe == null) labelLe = labelRt.gameObject.AddComponent<LayoutElement>();
                     labelLe.preferredHeight = labelHeight;
                     labelLe.minHeight = labelHeight;
                     labelLe.flexibleHeight = 0f;
-                    labelLe.preferredWidth = labelWidth;  // фиксированная ширина области названия
+                    labelLe.preferredWidth = labelWidth;
                     labelLe.flexibleWidth = 0f;
                 }
 
+                // ---------- Slider ----------
                 if (itemGO.transform.Find("Slider") is Transform sliderTf
                     && sliderTf.GetComponent<RectTransform>() is RectTransform sliderRt)
                 {
-                    // Anchor: anchorMin.x=0 anchorMax.x=1 → stretched full width
                     sliderRt.anchorMin = new Vector2(0f, 0f);
                     sliderRt.anchorMax = new Vector2(1f, 0f);
                     sliderRt.pivot = new Vector2(0.5f, 0f);
@@ -541,7 +731,7 @@ namespace Diploma.UI
                     sliderLe.preferredHeight = sliderHeight;
                     sliderLe.minHeight = sliderHeight;
                     sliderLe.flexibleHeight = 0f;
-                    sliderLe.flexibleWidth = 1f;   // приоритет на растягивание — занимает всё оставшееся пространство
+                    sliderLe.flexibleWidth = 1f;
                 }
 
                 TMP_Text label = null;
@@ -566,18 +756,18 @@ namespace Diploma.UI
                     continue;
                 }
 
-                // Font size from inspector
                 label.fontSize = labelFontSize;
                 label.fontSizeMin = labelFontSizeMin;
                 label.fontSizeMax = labelFontSizeMax;
-
-                // Configure label: Left = 1 | Top = 64 → alignment = 65
                 label.alignment = TMPro.TextAlignmentOptions.Left | TMPro.TextAlignmentOptions.Top;
                 label.textWrappingMode = TMPro.TextWrappingModes.NoWrap;
-                label.margin = new Vector4(4, 0, 4, 0); // 4px left+right padding
+                label.margin = new Vector4(4, 0, 4, 0);
                 label.overflowMode = TMPro.TextOverflowModes.Overflow;
                 label.enableAutoSizing = false;
                 label.autoSizeTextContainer = true;
+
+                // NEW: use displayName from ParameterSetting
+                string displayLabel = GetDisplayName(fieldName);
 
                 if (value is int intValue)
                 {
@@ -586,7 +776,7 @@ namespace Diploma.UI
                     slider.maxValue = max;
                     slider.wholeNumbers = true;
                     slider.value = intValue;
-                    label.text = $"{fieldName}: {intValue}";
+                    label.text = $"{displayLabel}: {intValue}";
                 }
                 else if (value is float floatValue)
                 {
@@ -595,7 +785,7 @@ namespace Diploma.UI
                     slider.maxValue = max;
                     slider.wholeNumbers = false;
                     slider.value = floatValue;
-                    label.text = $"{fieldName}: {floatValue.ToString(fmt)}";
+                    label.text = $"{displayLabel}: {floatValue.ToString(fmt)}";
                 }
                 else
                 {
@@ -614,9 +804,13 @@ namespace Diploma.UI
                 created++;
             }
 
-              Debug.Log($"[SettingsManager] Created {created} items ({skipped} skipped). " +
-                  $"Parameters: {string.Join(", ", parameterSliders.Keys)}");
+            Debug.Log($"[SettingsManager] Created {created} items ({skipped} skipped). " +
+                $"Parameters: {string.Join(", ", parameterSliders.Keys)}");
         }
+
+        // =====================================================================
+        // Parameter change
+        // =====================================================================
 
         private void OnParameterChanged(string fieldName, float newValue)
         {
@@ -651,110 +845,19 @@ namespace Diploma.UI
 
             if (parameterLabels.TryGetValue(fieldName, out TMP_Text label))
             {
+                // NEW: use displayName in label text
+                string displayLabel = GetDisplayName(fieldName);
+
                 if (convertedValue is float f)
                 {
                     string fmt = GetFloatFormat(fieldName);
-                    label.text = $"{fieldName}: {f.ToString(fmt)}";
+                    label.text = $"{displayLabel}: {f.ToString(fmt)}";
                 }
                 else if (convertedValue is int i)
                 {
-                    label.text = $"{fieldName}: {i}";
+                    label.text = $"{displayLabel}: {i}";
                 }
             }
-        }
-
-        private void GetIntRange(string fieldName, out int min, out int max)
-        {
-            switch (fieldName)
-            {
-                case "districtCount": min = 1; max = 20; break;
-                case "extraEdges": min = 0; max = 10; break;
-                case "roadRadius": min = 0; max = 3; break;
-                case "districtMargin": min = 0; max = 20; break;
-                case "districtMinDistance": min = 0; max = 30; break;
-                case "districtGridStep": min = 1; max = 20; break;
-                case "maxNodeDegree": min = 1; max = 4; break;
-                case "minBuildingGap": min = 0; max = 5; break;
-                case "minBuildingDistance": min = 0; max = 5; break;
-                case "terrainSmoothChance": min = 0; max = 100; break;
-                case "biomeOctaves": min = 1; max = 6; break;
-                case "decorationMinDistanceFromRoad": min = 0; max = 5; break;
-                case "decorationMaxDistanceFromRoad": min = 0; max = 50; break;
-                case "treeSpawnChance": min = 0; max = 100; break;
-                case "maxTreeCount": min = 0; max = 1000; break;
-                case "lampInterval": min = 2; max = 20; break;
-                case "minRoadSegmentLength": min = 3; max = 20; break;
-                case "minBenchDistance": min = 0; max = 5; break;
-                default: min = 0; max = 100; break;
-            }
-        }
-
-        private void GetFloatRange(string fieldName, out float min, out float max, out string format)
-        {
-            switch (fieldName)
-            {
-                case "biomeScale": min = 0.01f; max = 0.2f; format = "F3"; break;
-                case "biomePersistence": min = 0.1f; max = 1.0f; format = "F2"; break;
-                case "biomeLacunarity": min = 1.0f; max = 4.0f; format = "F1"; break;
-                default: min = 0f; max = 1f; format = "F2"; break;
-            }
-        }
-
-        private string GetFloatFormat(string fieldName)
-        {
-            switch (fieldName)
-            {
-                case "biomeScale": return "F3";
-                case "biomeLacunarity": return "F1";
-                default: return "F2";
-            }
-        }
-
-        private bool ShouldExcludeParameter(string fieldName)
-        {
-            string fnLower = fieldName.ToLower();
-
-            // Prefab arrays and IDs — excludeBuildingPrefabs catches buildingPrefabIds and buildingPrefabWeights
-            if (excludeBuildingPrefabs && fnLower.Contains("buildingprefab"))
-                return true;
-            if (excludeBuildingPrefabs && fnLower.Contains("buildingweight"))
-                return true;
-            if (excludeTreePrefabs && fnLower.Contains("treeprefab"))
-                return true;
-            if (excludeLampPrefabs && fnLower.Contains("lampprefab"))
-                return true;
-            if (excludeBenchPrefabs && fnLower.Contains("benchprefab"))
-                return true;
-
-            // Biome thresholds
-            if (excludeBiomeThresholds && fnLower.Contains("threshold"))
-                return true;
-
-            // Biome octaves — скрываем только параметры с описаниями октав, не само поле biomeOctaves
-            if (excludeBiomeOctaves && fnLower.Contains("octavechance"))
-                return true;
-
-            // Minimum distances — точные суффиксы тех трёх полей, что нужно скрыть
-            if (excludeMinDistances && fnLower.EndsWith("minbuildingdistance"))
-                return true;
-            if (excludeMinDistances && fnLower.EndsWith("decorationmindistancefromroad"))
-                return true;
-            if (excludeMinDistances && fnLower.EndsWith("minbenchdistance"))
-                return true;
-
-            // Terrain smooth
-            if (excludeTerrainSmooth && fnLower.Contains("smooth"))
-                return true;
-
-            // Hash fields
-            if (fnLower.Contains("hash"))
-                return true;
-
-            // Map size (Vector2Int — no slider UI)
-            if (fnLower.Contains("mapsize"))
-                return true;
-
-            return false;
         }
 
         public void ResetToDefaults()
@@ -778,14 +881,15 @@ namespace Diploma.UI
         {
             if (config == null) return;
 
-            var fields = config.GetType().GetFields(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance);
-            foreach (var field in fields)
+            foreach (var ps in parameterSettings)
             {
-                if (field.IsInitOnly) continue;
-                if (ShouldExcludeParameter(field.Name)) continue;
+                if (string.IsNullOrEmpty(ps.fieldName)) continue;
+
+                var field = config.GetType().GetField(ps.fieldName);
+                if (field == null || field.IsInitOnly) continue;
 
                 object value = field.GetValue(config);
-                string key = SETTINGS_PREFIX + field.Name;
+                string key = SETTINGS_PREFIX + ps.fieldName;
                 string strValue = value.ToString();
                 PlayerPrefs.SetString(key, strValue);
             }
@@ -797,13 +901,14 @@ namespace Diploma.UI
         {
             if (config == null) return;
 
-            var fields = config.GetType().GetFields(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance);
-            foreach (var field in fields)
+            foreach (var ps in parameterSettings)
             {
-                if (field.IsInitOnly) continue;
-                if (ShouldExcludeParameter(field.Name)) continue;
+                if (string.IsNullOrEmpty(ps.fieldName)) continue;
 
-                string key = SETTINGS_PREFIX + field.Name;
+                var field = config.GetType().GetField(ps.fieldName);
+                if (field == null || field.IsInitOnly) continue;
+
+                string key = SETTINGS_PREFIX + ps.fieldName;
                 if (PlayerPrefs.HasKey(key))
                 {
                     string savedValue = PlayerPrefs.GetString(key);
@@ -818,14 +923,6 @@ namespace Diploma.UI
                         {
                             converted = float.Parse(savedValue);
                         }
-                        else if (field.FieldType == typeof(Vector2Int))
-                        {
-                            var parts = savedValue.Split(',');
-                            if (parts.Length == 2 && int.TryParse(parts[0], out int x) && int.TryParse(parts[1], out int y))
-                            {
-                                converted = new Vector2Int(x, y);
-                            }
-                        }
 
                         if (converted != null)
                         {
@@ -834,7 +931,7 @@ namespace Diploma.UI
                     }
                     catch (Exception e)
                     {
-                        Debug.LogWarning($"[SettingsManager] Failed to load setting {field.Name}: {e.Message}");
+                        Debug.LogWarning($"[SettingsManager] Failed to load setting {ps.fieldName}: {e.Message}");
                     }
                 }
             }

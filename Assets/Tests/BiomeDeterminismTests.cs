@@ -11,7 +11,7 @@ public class BiomeDeterminismTests
     public void Biomes_SameSeed_ProducesSameGroundLayer()
     {
         var cfg = ScriptableObject.CreateInstance<WorldGenConfig>();
-        cfg.mapSize = new Vector2Int(64, 64);
+        cfg.MapSize = new Vector2Int(64, 64);
         
         cfg.biomeScale = 0.05f;
         cfg.biomeOctaves = 4;
@@ -43,7 +43,7 @@ public class BiomeDeterminismTests
     public void Biomes_DifferentSeeds_ProducesDifferentGroundLayer()
     {
         var cfg = ScriptableObject.CreateInstance<WorldGenConfig>();
-        cfg.mapSize = new Vector2Int(64, 64);
+        cfg.MapSize = new Vector2Int(64, 64);
         
         cfg.biomeScale = 0.05f;
         cfg.biomeOctaves = 4;
@@ -75,7 +75,7 @@ public class BiomeDeterminismTests
     public void Biomes_HasEnoughGrassForTreeSpawning()
     {
         var cfg = ScriptableObject.CreateInstance<WorldGenConfig>();
-        cfg.mapSize = new Vector2Int(64, 64);
+        cfg.MapSize = new Vector2Int(64, 64);
         
         cfg.biomeScale = 0.05f;
         cfg.biomeOctaves = 4;
@@ -109,7 +109,7 @@ public class BiomeDeterminismTests
     public void Biomes_ContainsMultipleBiomeTypes()
     {
         var cfg = ScriptableObject.CreateInstance<WorldGenConfig>();
-        cfg.mapSize = new Vector2Int(64, 64);
+        cfg.MapSize = new Vector2Int(64, 64);
         
         cfg.biomeScale = 0.05f;
         cfg.biomeOctaves = 4;
@@ -150,7 +150,7 @@ public class BiomeDeterminismTests
     public void Biomes_FullPipeline_DeterministicHash()
     {
         var cfg = ScriptableObject.CreateInstance<WorldGenConfig>();
-        cfg.mapSize = new Vector2Int(64, 64);
+        cfg.MapSize = new Vector2Int(64, 64);
         
         cfg.biomeScale = 0.05f;
         cfg.biomeOctaves = 4;

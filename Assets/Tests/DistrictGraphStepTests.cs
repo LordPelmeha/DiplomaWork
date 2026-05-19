@@ -12,12 +12,12 @@ public class DistrictGraphStepTests
     public void Execute_CreatesGraphWithCorrectNodeCount()
     {
         var cfg = ScriptableObject.CreateInstance<WorldGenConfig>();
-        cfg.mapSize = new Vector2Int(64, 64);
+        cfg.MapSize = new Vector2Int(64, 64);
         cfg.districtCount = 8;
         cfg.districtMargin = 5;
         cfg.districtMinDistance = 6;
 
-        var world = new WorldData(cfg.mapSize);
+        var world = new WorldData(cfg.MapSize);
         var seed = new SeedContext(12345);
         var step = new DistrictGraphStep();
 
@@ -31,10 +31,10 @@ public class DistrictGraphStepTests
     public void Execute_CreatesConnectedGraph()
     {
         var cfg = ScriptableObject.CreateInstance<WorldGenConfig>();
-        cfg.mapSize = new Vector2Int(64, 64);
+        cfg.MapSize = new Vector2Int(64, 64);
         cfg.districtCount = 8;
 
-        var world = new WorldData(cfg.mapSize);
+        var world = new WorldData(cfg.MapSize);
         var seed = new SeedContext(12345);
         var step = new DistrictGraphStep();
 
@@ -73,14 +73,14 @@ public class DistrictGraphStepTests
     public void Execute_Deterministic_SameSeedSameGraph()
     {
         var cfg = ScriptableObject.CreateInstance<WorldGenConfig>();
-        cfg.mapSize = new Vector2Int(64, 64);
+        cfg.MapSize = new Vector2Int(64, 64);
         cfg.districtCount = 8;
 
         var seed1 = new SeedContext(12345);
         var seed2 = new SeedContext(12345);
         
-        var world1 = new WorldData(cfg.mapSize);
-        var world2 = new WorldData(cfg.mapSize);
+        var world1 = new WorldData(cfg.MapSize);
+        var world2 = new WorldData(cfg.MapSize);
         
         var step = new DistrictGraphStep();
 
@@ -99,14 +99,14 @@ public class DistrictGraphStepTests
     public void Execute_DifferentSeed_DifferentGraph()
     {
         var cfg = ScriptableObject.CreateInstance<WorldGenConfig>();
-        cfg.mapSize = new Vector2Int(64, 64);
+        cfg.MapSize = new Vector2Int(64, 64);
         cfg.districtCount = 8;
 
         var seed1 = new SeedContext(11111);
         var seed2 = new SeedContext(22222);
         
-        var world1 = new WorldData(cfg.mapSize);
-        var world2 = new WorldData(cfg.mapSize);
+        var world1 = new WorldData(cfg.MapSize);
+        var world2 = new WorldData(cfg.MapSize);
         
         var step = new DistrictGraphStep();
 
@@ -129,11 +129,11 @@ public class DistrictGraphStepTests
     public void Execute_NodesWithinMapBounds()
     {
         var cfg = ScriptableObject.CreateInstance<WorldGenConfig>();
-        cfg.mapSize = new Vector2Int(64, 64);
+        cfg.MapSize = new Vector2Int(64, 64);
         cfg.districtCount = 8;
         cfg.districtMargin = 5;
 
-        var world = new WorldData(cfg.mapSize);
+        var world = new WorldData(cfg.MapSize);
         var seed = new SeedContext(12345);
         var step = new DistrictGraphStep();
 
@@ -142,9 +142,9 @@ public class DistrictGraphStepTests
         foreach (var node in world.Graph.Nodes)
         {
             Assert.GreaterOrEqual(node.position.x, cfg.districtMargin);
-            Assert.Less(node.position.x, cfg.mapSize.x - cfg.districtMargin);
+            Assert.Less(node.position.x, cfg.MapSize.x - cfg.districtMargin);
             Assert.GreaterOrEqual(node.position.y, cfg.districtMargin);
-            Assert.Less(node.position.y, cfg.mapSize.y - cfg.districtMargin);
+            Assert.Less(node.position.y, cfg.MapSize.y - cfg.districtMargin);
         }
     }
 
@@ -152,11 +152,11 @@ public class DistrictGraphStepTests
     public void Execute_ExtraEdges_AddedToGraph()
     {
         var cfg = ScriptableObject.CreateInstance<WorldGenConfig>();
-        cfg.mapSize = new Vector2Int(64, 64);
+        cfg.MapSize = new Vector2Int(64, 64);
         cfg.districtCount = 8;
         cfg.extraEdges = 5;
 
-        var world = new WorldData(cfg.mapSize);
+        var world = new WorldData(cfg.MapSize);
         var seed = new SeedContext(12345);
         var step = new DistrictGraphStep();
 
@@ -171,12 +171,12 @@ public class DistrictGraphStepTests
     public void Execute_MinDistance_Respected()
     {
         var cfg = ScriptableObject.CreateInstance<WorldGenConfig>();
-        cfg.mapSize = new Vector2Int(64, 64);
+        cfg.MapSize = new Vector2Int(64, 64);
         cfg.districtCount = 8;
         cfg.districtMinDistance = 10;
         cfg.districtMargin = 0;
 
-        var world = new WorldData(cfg.mapSize);
+        var world = new WorldData(cfg.MapSize);
         var seed = new SeedContext(12345);
         var step = new DistrictGraphStep();
 
