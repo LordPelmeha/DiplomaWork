@@ -36,6 +36,28 @@ namespace Diploma.UI
         public bool excludeMinDistances = true;
         public bool excludeTerrainSmooth = true;
 
+        [Header("Setting Item Layout")]
+        [Tooltip("Размер шрифта текста лейбла")]
+        public float labelFontSize = 20f;
+        [Tooltip("Размер шрифта минимум (при автосайзе)")]
+        public float labelFontSizeMin = 18f;
+        [Tooltip("Размер шрифта максимум (при автосайзе)")]
+        public float labelFontSizeMax = 28f;
+        [Tooltip("Высота области лейбла в пикселях")]
+        public float labelHeight = 35f;
+        [Tooltip("Высота слайдера в пикселях")]
+        public float sliderHeight = 32f;
+        [Tooltip("Отступ между лейблом и слайдером в пикселях (внутри элемента)")]
+        public float itemSpacing = 4f;
+        [Tooltip("Отступ между соседними элементами настроек (item ↔ item)")]
+        public float itemItemSpacing = 8f;
+        [Tooltip("Отступ от левого края контейнера до текста лейбла")]
+        public float labelLeftPadding = 8f;
+        [Tooltip("Ширина области с названием параметра в пикселях")]
+        public float labelWidth = 180f;
+        [Tooltip("Общая высота элемента настройки в пикселях (0 = auto)")]
+        public float itemTotalHeight = 0f;
+
         private Dictionary<string, Slider> parameterSliders = new Dictionary<string, Slider>();
         private Dictionary<string, TMP_Text> parameterLabels = new Dictionary<string, TMP_Text>();
         private Dictionary<string, object> defaultValues = new Dictionary<string, object>();
@@ -127,6 +149,29 @@ namespace Diploma.UI
                 // Fix broken ScrollRect / Viewport that clips everything
                 // Fix broken ScrollRect / Viewport that clips everything
                 FixScrollRect();
+
+                // Configure SettingsContent VLG per inspector parameters
+                if (settingsContent != null)
+                {
+                    VerticalLayoutGroup contentVLG = settingsContent.GetComponent<VerticalLayoutGroup>();
+                    if (contentVLG != null)
+                    {
+                        contentVLG.spacing = itemItemSpacing;          // отступ между item'ами
+                        contentVLG.padding = new RectOffset(              // отступ от левого края контейнера
+                            Mathf.RoundToInt(labelLeftPadding),    // left — не обрезает, округляет
+                            Mathf.RoundToInt(labelLeftPadding * 0.5f), // right — немного меньше
+                            Mathf.RoundToInt(labelLeftPadding * 0.5f), // top
+                            Mathf.RoundToInt(labelLeftPadding * 0.5f)  // bottom
+                        );
+                        contentVLG.childAlignment = TextAnchor.UpperLeft;  // не центрировать, прижимать к верху-слева
+                        contentVLG.childControlWidth = true;               // разрешаем VLG контролировать ширину (все равно false-expand)
+                        contentVLG.childControlHeight = true;
+                        contentVLG.childForceExpandWidth = true;           // дети растягиваются на всю доступную ширину
+                        contentVLG.childForceExpandHeight = false;
+                        Debug.Log($"[SettingsManager] Configured SettingsContent VLG: spacing={itemItemSpacing}, " +
+                            $"padding.left={labelLeftPadding}, upperForceExpandWidth=true");
+                    }
+                }
 
                 // Force Viewport VLG to compute its final width BEFORE children are created
                 ScrollRect srForViewport = settingsPanel.GetComponentInChildren<ScrollRect>(true);
@@ -440,70 +485,63 @@ namespace Diploma.UI
                 LayoutElement rootLe = itemGO.GetComponent<LayoutElement>();
                 if (rootLe == null)
                     rootLe = itemGO.AddComponent<LayoutElement>();
-                rootLe.preferredHeight = 85f; // 50 label + 4 spacing + 31 slider
-                rootLe.minHeight = 85f;
+                float totalH = itemTotalHeight > 0f ? itemTotalHeight : labelHeight + itemSpacing + sliderHeight;
+                rootLe.preferredHeight = totalH;
+                rootLe.minHeight = totalH;
                 rootLe.flexibleHeight = 0f;
                 rootLe.preferredWidth = -1f;     // fill parent width
                 rootLe.minWidth = 0f;
 
-                // VLG stacks children (Label above Slider) vertically inside each item
+                // VLG stacks Label above Slider vertically inside each item
                 VerticalLayoutGroup vlg = itemGO.GetComponent<VerticalLayoutGroup>();
                 if (vlg == null)
                 {
                     vlg = itemGO.AddComponent<VerticalLayoutGroup>();
                 }
                 vlg.padding = new RectOffset(0, 0, 0, 0);
-                vlg.spacing = 4;
-                vlg.childControlWidth = true;
+                vlg.spacing = itemSpacing;   // отступ label ↔ slider внутри одного item
+                vlg.childControlWidth = true;   // уважаем preferredWidth детей
                 vlg.childControlHeight = true;
-                vlg.childForceExpandWidth = true;
+                vlg.childForceExpandWidth = false; // не принудительно растягиваем — preferredWidth работает
                 vlg.childForceExpandHeight = false;
+                vlg.childAlignment = TextAnchor.UpperLeft;
 
-                // ---------- children layout using LayoutElement (NOT FixChildAnchor) ----------
-                // Previous approach used FixChildAnchor with sizeDelta=(0, h):
-                //   sizeDelta.x = 0 caused width to collapse to 0 with anchorMin.x=anchorMax.x=0,
-                //   and the inner VLG measured slider's LayoutElement.preferredHeight = 0
-                //   (never overridden), producing cascade → height=0 for whole item.
-
-                // Fix: use LayoutElement components on children + stretch X anchors for full width
+                // ---------- children layout ----------
+                // VLG childControlHeight drives child Y-positions via SetChildAlongAxis automatically.
+                // Use LayoutElement.preferredWidth/Height to tell VLG the geometry of each child.
                 if (itemGO.transform.Find("Label") is Transform labelTf
                     && labelTf.GetComponent<RectTransform>() is RectTransform labelRt)
                 {
-                    // Pin TOP of label to TOP of parent item; stretch FULL width via anchors
-                    labelRt.anchorMin = new Vector2(0f, 1f);
-                    labelRt.anchorMax = new Vector2(1f, 1f);
-                    labelRt.pivot = new Vector2(0.5f, 1f);
-                    labelRt.anchoredPosition = new Vector2(0f, 0f);
-                    // SizeDelta.y is the child pixel height; VLG uses LayoutElement.preferredHeight instead
-                    labelRt.sizeDelta = new Vector2(0, 50);
+                    // Anchor: left edge at x=0 in parent local space (left-aligned container)
+                    labelRt.anchorMin = new Vector2(0f, 0f);
+                    labelRt.anchorMax = new Vector2(0f, 0f);   // not stretched — fixed preferredWidth
+                    labelRt.pivot = new Vector2(0f, 0f);       // pivot = left-bottom corner
+                    labelRt.anchoredPosition = new Vector2(labelLeftPadding, 0f); // отступ от левого края
 
-                    // LayoutElement gives VLG the explicit height to assign to this child
                     LayoutElement labelLe = labelRt.GetComponent<LayoutElement>();
                     if (labelLe == null) labelLe = labelRt.gameObject.AddComponent<LayoutElement>();
-                    labelLe.preferredHeight = 50f;
-                    labelLe.minHeight = 50f;
+                    labelLe.preferredHeight = labelHeight;
+                    labelLe.minHeight = labelHeight;
                     labelLe.flexibleHeight = 0f;
-                    // Label text width hint (VLG ignores preferredWidth when childControlWidth=true)
-                    labelLe.preferredWidth = 180f;
-                    labelLe.minWidth = 180f;
+                    labelLe.preferredWidth = labelWidth;  // фиксированная ширина области названия
+                    labelLe.flexibleWidth = 0f;
                 }
 
                 if (itemGO.transform.Find("Slider") is Transform sliderTf
                     && sliderTf.GetComponent<RectTransform>() is RectTransform sliderRt)
                 {
-                    sliderRt.anchorMin = new Vector2(0f, 1f);
-                    sliderRt.anchorMax = new Vector2(1f, 1f);
-                    sliderRt.pivot = new Vector2(0.5f, 1f);
+                    // Anchor: anchorMin.x=0 anchorMax.x=1 → stretched full width
+                    sliderRt.anchorMin = new Vector2(0f, 0f);
+                    sliderRt.anchorMax = new Vector2(1f, 0f);
+                    sliderRt.pivot = new Vector2(0.5f, 0f);
                     sliderRt.anchoredPosition = new Vector2(0f, 0f);
-                    sliderRt.sizeDelta = new Vector2(0, 31);
 
                     LayoutElement sliderLe = sliderRt.GetComponent<LayoutElement>();
                     if (sliderLe == null) sliderLe = sliderRt.gameObject.AddComponent<LayoutElement>();
-                    sliderLe.preferredHeight = 31f;
-                    sliderLe.minHeight = 31f;
+                    sliderLe.preferredHeight = sliderHeight;
+                    sliderLe.minHeight = sliderHeight;
                     sliderLe.flexibleHeight = 0f;
-                    sliderLe.preferredWidth = -1f; // fill remaining width (expand)
-                    sliderLe.minWidth = 0f;
+                    sliderLe.flexibleWidth = 1f;   // приоритет на растягивание — занимает всё оставшееся пространство
                 }
 
                 TMP_Text label = null;
@@ -528,10 +566,18 @@ namespace Diploma.UI
                     continue;
                 }
 
-                // Configure label: right-aligned, no wrap
-                label.alignment = TextAlignmentOptions.MidlineRight;
-                label.enableWordWrapping = false;
-                label.margin = new Vector4(4, 0, 4, 0); // 4px horizontal padding
+                // Font size from inspector
+                label.fontSize = labelFontSize;
+                label.fontSizeMin = labelFontSizeMin;
+                label.fontSizeMax = labelFontSizeMax;
+
+                // Configure label: Left = 1 | Top = 64 → alignment = 65
+                label.alignment = TMPro.TextAlignmentOptions.Left | TMPro.TextAlignmentOptions.Top;
+                label.textWrappingMode = TMPro.TextWrappingModes.NoWrap;
+                label.margin = new Vector4(4, 0, 4, 0); // 4px left+right padding
+                label.overflowMode = TMPro.TextOverflowModes.Overflow;
+                label.enableAutoSizing = false;
+                label.autoSizeTextContainer = true;
 
                 if (value is int intValue)
                 {
